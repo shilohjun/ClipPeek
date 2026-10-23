@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-23
+
+### Added
+
+- **"auto-snap to screen edges" toggle** — a checkable menu item (on by default). Turned off, dragging the icon near an edge no longer snaps, and an icon that is currently snapped comes straight back to full size. "unsnap" still works for one-off releases while auto-snap stays on.
+
+### Removed
+
+- The **"open data folder"** menu item, together with its implementation. It was one more shell action that could fail silently on locked-down machines, and it is not worth the surface area; the data folder path is reported in the bubble when it matters (an unwritable directory).
+
 ## [1.3.2] - 2026-10-23
 
 ### Fixed

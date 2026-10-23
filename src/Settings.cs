@@ -23,6 +23,9 @@ namespace ClipPeek
         internal int PanelX = int.MinValue;
         internal int PanelY = int.MinValue;
 
+        /// <summary>拖动松开时自动吸附到屏幕边缘。</summary>
+        internal bool AutoSnap = true;
+
         /// <summary>复制成功时光标处闪一个绿色圆环。</summary>
         internal bool CursorGlow = true;
 
@@ -63,6 +66,7 @@ namespace ClipPeek
                 PanelY = Int(map, "panelY", int.MinValue);
                 Snap = (SnapEdge)Int(map, "snap", 0);
                 CursorGlow = Bool(map, "cursorGlow", true);
+                AutoSnap = Bool(map, "autoSnap", true);
             }
             catch (Exception ex)
             {
@@ -87,6 +91,7 @@ namespace ClipPeek
                 map["panelY"] = PanelY;
                 map["snap"] = (int)Snap;
                 map["cursorGlow"] = CursorGlow;
+                map["autoSnap"] = AutoSnap;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }

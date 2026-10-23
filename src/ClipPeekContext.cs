@@ -62,6 +62,7 @@ namespace ClipPeek
         private ToolStripMenuItem _resetIconItem;
         private ToolStripMenuItem _unsnapItem;
         private ToolStripMenuItem _glowItem;
+        private ToolStripMenuItem _autoSnapItem;
 
         private IntroForm _intro;
 
@@ -447,7 +448,7 @@ namespace ClipPeek
             _settings.IconX = _icon.Left;
             _settings.IconY = _icon.Top;
 
-            SnapEdge edge = FindNearestEdge(_icon.Bounds);
+            SnapEdge edge = _settings.AutoSnap ? FindNearestEdge(_icon.Bounds) : SnapEdge.None;
             if (edge != SnapEdge.None) _icon.DockTo(edge);
             _settings.Snap = _icon.Edge;
             _settings.Save();
@@ -682,11 +683,27 @@ namespace ClipPeek
                 _bubble.ShowNote("已取消吸附", Anchor);
             };
 
+            _autoSnapItem = new ToolStripMenuItem("自动吸附屏幕边缘");
+            _autoSnapItem.CheckOnClick = true;
+            _autoSnapItem.Click += delegate
+            {
+                _settings.AutoSnap = _autoSnapItem.Checked;
+                _settings.Save();
+
+                if (!_settings.AutoSnap && _icon.IsDocked)
+                {
+                    _icon.Undock();
+                    _settings.Snap = SnapEdge.None;
+                    _settings.HasPosition = true;
+                    _settings.IconX = _icon.Left;
+                    _settings.IconY = _icon.Top;
+                    _settings.Save();
+                    _bubble.ShowNote("已关闭自动吸附，图标恢复完整", Anchor);
+                }
+            };
+
             _clearItem = new ToolStripMenuItem("清空历史");
             _clearItem.Click += delegate { _history.Clear(); };
-
-            ToolStripMenuItem openDataItem = new ToolStripMenuItem("打开数据目录");
-            openDataItem.Click += delegate { OpenDataDirectory(); };
 
             ToolStripMenuItem exitItem = new ToolStripMenuItem("退出");
             exitItem.Click += delegate { ExitApp(); };
@@ -730,8 +747,8 @@ namespace ClipPeek
             _menu.Items.Add(_autoItem);
             _menu.Items.Add(_hideItem);
             _menu.Items.Add(resetItem);
+            _menu.Items.Add(_autoSnapItem);
             _menu.Items.Add(_unsnapItem);
-            _menu.Items.Add(openDataItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_adjustIconItem);
             _menu.Items.Add(_cropIconItem);
@@ -757,6 +774,7 @@ namespace ClipPeek
             _unsnapItem.Enabled = _icon.IsDocked;
             _introItem.Checked = _settings.PlayIntro;
             _glowItem.Checked = _settings.CursorGlow;
+            _autoSnapItem.Checked = _settings.AutoSnap;
             _resetIconItem.Enabled = Theme.CustomIcon != null;
             _cropIconItem.Enabled = Theme.CustomIcon != null;
         }
@@ -868,26 +886,6 @@ namespace ClipPeek
 
         // ---------- 没在运行时怎么快速打开 ----------
 
-        /// <summary>打开数据目录。路径末尾的反斜杠会吃掉引号，必须先去掉。</summary>
-        private void OpenDataDirectory()
-        {
-            try
-            {
-                Directory.CreateDirectory(_directory);
-                string target = _directory.TrimEnd('\\', '/');
-
-                System.Diagnostics.ProcessStartInfo info = new System.Diagnostics.ProcessStartInfo();
-                info.FileName = "explorer.exe";
-                info.Arguments = "\"" + target + "\"";
-                info.UseShellExecute = true;
-                System.Diagnostics.Process.Start(info);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("OpenDataDirectory", ex);
-                _bubble.ShowNote("打不开数据目录：" + ex.Message + "（路径：" + _directory + "）", Anchor);
-            }
-        }
         private void CreateStartMenuShortcut()
         {
             try
