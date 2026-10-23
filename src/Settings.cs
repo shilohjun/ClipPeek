@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Web.Script.Serialization;
@@ -22,6 +22,9 @@ namespace ClipPeek
         internal bool HasPanelPosition;
         internal int PanelX = int.MinValue;
         internal int PanelY = int.MinValue;
+
+        /// <summary>复制成功时光标处闪一个绿色圆环。</summary>
+        internal bool CursorGlow = true;
 
         /// <summary>吸附在哪条屏幕边缘（None 表示没有吸附）。</summary>
         internal SnapEdge Snap = SnapEdge.None;
@@ -59,6 +62,7 @@ namespace ClipPeek
                 PanelX = Int(map, "panelX", int.MinValue);
                 PanelY = Int(map, "panelY", int.MinValue);
                 Snap = (SnapEdge)Int(map, "snap", 0);
+                CursorGlow = Bool(map, "cursorGlow", true);
             }
             catch (Exception ex)
             {
@@ -82,6 +86,7 @@ namespace ClipPeek
                 map["panelX"] = PanelX;
                 map["panelY"] = PanelY;
                 map["snap"] = (int)Snap;
+                map["cursorGlow"] = CursorGlow;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }

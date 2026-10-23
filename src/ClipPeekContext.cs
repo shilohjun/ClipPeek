@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -48,6 +48,7 @@ namespace ClipPeek
         private HistoryStore _history;
         private IconForm _icon;
         private BubbleForm _bubble;
+        private CursorGlow _cursorGlow;
         private HistoryForm _panel;
         private NotifyIcon _tray;
         private ContextMenuStrip _menu;
@@ -60,6 +61,7 @@ namespace ClipPeek
         private ToolStripMenuItem _cropIconItem;
         private ToolStripMenuItem _resetIconItem;
         private ToolStripMenuItem _unsnapItem;
+        private ToolStripMenuItem _glowItem;
 
         private IntroForm _intro;
 
@@ -110,6 +112,8 @@ namespace ClipPeek
 
             _bubble = new BubbleForm();
             _bubble.Clicked += OnBubbleClicked;
+
+            _cursorGlow = new CursorGlow();
 
             _panel = new HistoryForm(_history);
             _panel.ItemActivated += OnItemActivated;
@@ -363,6 +367,7 @@ namespace ClipPeek
 
             _history.Add(item);
             _icon.Flash();
+            if (_settings.CursorGlow && !_hiddenForFullScreen) _cursorGlow.Play();
             Program.Trace("clip captured: kind=" + item.Kind + " chars=" + item.Chars + " truncated=" + item.Truncated);
 
             // 超长文本也弹气泡——没反馈会被当成「没复制上」；截断情况由气泡第二行说明
@@ -703,6 +708,14 @@ namespace ClipPeek
                 _settings.Save();
             };
 
+            _glowItem = new ToolStripMenuItem("复制时光标光晕");
+            _glowItem.Click += delegate
+            {
+                _settings.CursorGlow = !_settings.CursorGlow;
+                _settings.Save();
+                if (!_settings.CursorGlow) _cursorGlow.Stop();
+            };
+
             ToolStripMenuItem replayItem = new ToolStripMenuItem("重播开场动画");
             replayItem.Click += delegate { PlayIntro(); };
 
@@ -722,6 +735,7 @@ namespace ClipPeek
             _menu.Items.Add(_cropIconItem);
             _menu.Items.Add(_resetIconItem);
             _menu.Items.Add(_introItem);
+            _menu.Items.Add(_glowItem);
             _menu.Items.Add(replayItem);
             _menu.Items.Add(shortcutItem);
             _menu.Items.Add(new ToolStripSeparator());
@@ -740,6 +754,7 @@ namespace ClipPeek
             _clearItem.Enabled = _history.Items.Count > 0;
             _unsnapItem.Enabled = _icon.IsDocked;
             _introItem.Checked = _settings.PlayIntro;
+            _glowItem.Checked = _settings.CursorGlow;
             _resetIconItem.Enabled = Theme.CustomIcon != null;
             _cropIconItem.Enabled = Theme.CustomIcon != null;
         }
@@ -928,6 +943,7 @@ namespace ClipPeek
 
                 if (_icon != null) { _icon.DisposeBitmaps(); _icon.Dispose(); }
                 if (_bubble != null) { _bubble.DisposeFonts(); _bubble.Dispose(); }
+            if (_cursorGlow != null) { _cursorGlow.Dispose(); }
                 if (_panel != null) { _panel.DisposeResources(); _panel.Dispose(); }
                 if (_menu != null) _menu.Dispose();
             }
@@ -1396,6 +1412,12 @@ namespace ClipPeek
                     && Math.Abs(breathMin - DockBreath.MinOpacity) < 0.01
                     && Math.Abs(breathMax - DockBreath.MaxOpacity) < 0.01
                     && breathMid > breathMin && breathMid < breathMax);
+                // 光标光晕：环从 0.62 扩到 1.0，透明度先快速亮起再淡出
+                check("glow.curve", CursorGlow.RadiusScale(0) > 0.60 && CursorGlow.RadiusScale(0) < 0.65
+                    && CursorGlow.RadiusScale(1) > 0.99
+                    && CursorGlow.OpacityAt(0) < 0.01
+                    && CursorGlow.OpacityAt(0.10) > 0.99
+                    && CursorGlow.OpacityAt(1) < 0.01);
 
                 output.AppendLine("SKIP sensitive-flag (需真实密码管理器触发)");
                 output.AppendLine("SKIP hotkey (需真实按键)");

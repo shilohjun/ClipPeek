@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-23
+
+### Added
+
+- **Cursor glow** — every successful copy flashes a green ring around the mouse: it follows the cursor while playing, is click-through and never takes focus, and is hollow in the middle so it does not hide the text under the pointer. One cycle lasts 1.4 s (a quick rise, then a fade) while the ring expands slightly. It covers text, images and files, and re-copying from the history panel glows too. Toggleable from the right-click menu ("cursor glow on copy"), stored in settings, on by default.
+
 ## [1.2.0] - 2026-10-23
 
 ### Added

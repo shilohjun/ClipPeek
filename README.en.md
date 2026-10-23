@@ -46,6 +46,7 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 | | |
 |---|---|
 | ✅ **Copy confirmation bubble** | Type + size + up to two preview lines; fades after 2.5 s, pauses on hover, click to open history |
+| ✅ **Cursor glow** | A green ring flashes at the mouse on every successful copy: it follows the cursor, is click-through and hollow in the middle so it never hides text. One 1.4 s "breathe + slight expand"; toggle it from the right-click menu |
 | ✅ **Launch animation** | 144 eight-pixel blocks converge into the icon on startup, with a **fully transparent background** (no card — it floats straight over your desktop). Can be turned off, replayed, and never blocks clicks |
 | ✅ **Edge snapping** | Drag the icon near any screen edge (within 24 px) and it snaps; only **half of the icon** stays visible, cut along the edge, and it slowly **breathes** like an LED (one cycle ≈ 4.2 s). Hover to expand it into the full icon; drag it away or use "unsnap" to release |
 | ✅ **Custom icon** | Pick an image via right-click → "change icon…", or just drop one onto the floating icon → pan/zoom to crop → the icon, tray icon and launch animation all switch to yours |
@@ -78,6 +79,10 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 | Snapped to a screen edge: half an icon breathing like an LED (dim → bright → dim) |
 |---|
 | ![Snap animation frames](screenshots/dock-frames.png) |
+
+| A successful copy: green ring at the cursor |
+|---|
+| ![Cursor glow](screenshots/cursor-glow.png) |
 
 ---
 
