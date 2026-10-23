@@ -19,6 +19,10 @@ namespace ClipPeek
         internal bool Paused;
         internal bool PlayIntro = true;
 
+        internal bool HasPanelPosition;
+        internal int PanelX = int.MinValue;
+        internal int PanelY = int.MinValue;
+
         internal string Path_
         {
             get { return _path; }
@@ -48,6 +52,9 @@ namespace ClipPeek
                 Hidden = Bool(map, "hidden", false);
                 Paused = Bool(map, "paused", false);
                 PlayIntro = Bool(map, "playIntro", true);
+                HasPanelPosition = Bool(map, "hasPanelPosition", false);
+                PanelX = Int(map, "panelX", int.MinValue);
+                PanelY = Int(map, "panelY", int.MinValue);
             }
             catch (Exception ex)
             {
@@ -67,6 +74,9 @@ namespace ClipPeek
                 map["hidden"] = Hidden;
                 map["paused"] = Paused;
                 map["playIntro"] = PlayIntro;
+                map["hasPanelPosition"] = HasPanelPosition;
+                map["panelX"] = PanelX;
+                map["panelY"] = PanelY;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }

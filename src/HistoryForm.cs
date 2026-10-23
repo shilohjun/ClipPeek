@@ -10,6 +10,11 @@ namespace ClipPeek
         internal event EventHandler<ClipItem> ItemActivated;
         internal event EventHandler HistoryChanged;
         internal event EventHandler<string> ImageDropped;
+        internal event EventHandler PositionChanged;
+        internal event EventHandler ShowIconRequested;
+
+        /// <summary>浮动图标是否处于隐藏状态（面板页脚会给出「点这里显示」的入口）。</summary>
+        internal bool IconHidden;
 
         private readonly HistoryStore _store;
         private readonly ListBox _list;
@@ -32,6 +37,18 @@ namespace ClipPeek
         private int _hover = -1;
         private bool _menuOpen;
         private ContextMenuStrip _menu;
+
+        private bool _dragging;
+        private bool _dragMoved;
+        private bool _suppressClick;
+        private bool _hotFooter;
+        private Point _dragFrom;
+        private Point _windowFrom;
+
+        private Rectangle FooterRect
+        {
+            get { return new Rectangle(0, Height - _footerH, _w, _footerH); }
+        }
 
         internal int PanelWidth
         {
@@ -125,7 +142,7 @@ namespace ClipPeek
             Native.MakeToolWindow(Handle);
         }
 
-        internal void ShowPanel(Rectangle iconBounds)
+        internal void ShowPanel(Rectangle iconBounds, bool useManualPosition, Point manualPosition)
         {
             Rebuild();
 
@@ -145,7 +162,15 @@ namespace ClipPeek
             _list.Visible = !_empty.Visible;
 
             ComputeButtonRects();
-            Place(iconBounds);
+
+            if (useManualPosition)
+            {
+                Location = ClampToScreen(manualPosition, screen);
+            }
+            else
+            {
+                Place(iconBounds);
+            }
 
             Show();
             Activate();
@@ -162,6 +187,15 @@ namespace ClipPeek
             }
 
             Invalidate();
+        }
+
+        private Point ClampToScreen(Point location, Screen screen)
+        {
+            Rectangle work = screen.WorkingArea;
+            int margin = Ui.Px(4);
+            int x = Math.Max(work.Left + margin, Math.Min(location.X, work.Right - Width - margin));
+            int y = Math.Max(work.Top + margin, Math.Min(location.Y, work.Bottom - Height - margin));
+            return new Point(x, y);
         }
 
         internal void HidePanel()
@@ -338,25 +372,81 @@ namespace ClipPeek
             HidePanel();
         }
 
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left) return;
+            if (_closeRect.Contains(e.Location) || _clearRect.Contains(e.Location)) return;
+            if (IconHidden && FooterRect.Contains(e.Location)) return;
+
+            // 面板空白处（表头 / 页脚 / 列表外的边距）按住就能拖
+            _dragging = true;
+            _dragMoved = false;
+            _dragFrom = Cursor.Position;
+            _windowFrom = Location;
+        }
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            if (_dragging)
+            {
+                Point now = Cursor.Position;
+                int dx = now.X - _dragFrom.X;
+                int dy = now.Y - _dragFrom.Y;
+                if (!_dragMoved && (Math.Abs(dx) > Ui.Px(4) || Math.Abs(dy) > Ui.Px(4))) _dragMoved = true;
+                if (_dragMoved) Location = new Point(_windowFrom.X + dx, _windowFrom.Y + dy);
+                return;
+            }
+
             bool hc = _clearRect.Contains(e.Location);
             bool hx = _closeRect.Contains(e.Location);
-            if (hc != _hotClear || hx != _hotClose)
+            bool hf = IconHidden && FooterRect.Contains(e.Location);
+            if (hc != _hotClear || hx != _hotClose || hf != _hotFooter)
             {
                 _hotClear = hc;
                 _hotClose = hx;
+                _hotFooter = hf;
                 Invalidate(new Rectangle(0, 0, _w, _headerH));
+                Invalidate(FooterRect);
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button != MouseButtons.Left || !_dragging) return;
+
+            bool moved = _dragMoved;
+            _dragging = false;
+            _dragMoved = false;
+
+            if (moved)
+            {
+                _suppressClick = true;
+                if (PositionChanged != null) PositionChanged(this, EventArgs.Empty);
             }
         }
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
+
+            if (_suppressClick)
+            {
+                _suppressClick = false;
+                return;
+            }
+
             if (e.Button != MouseButtons.Left) return;
             if (_closeRect.Contains(e.Location)) { HidePanel(); return; }
             if (_clearRect.Contains(e.Location)) { ClearAll(); return; }
+            if (IconHidden && FooterRect.Contains(e.Location))
+            {
+                if (ShowIconRequested != null) ShowIconRequested(this, EventArgs.Empty);
+                return;
+            }
         }
 
         private void OnDrawItem(object sender, DrawItemEventArgs e)
@@ -477,11 +567,22 @@ namespace ClipPeek
                 g.DrawLine(pen, Ui.Px(12), Height - _footerH, Width - Ui.Px(12), Height - _footerH);
             }
 
-            TextRenderer.DrawText(
-                g, "↑↓ 选择 · Enter 复制 · Del 删除 · Esc 关闭", _fontMeta,
-                new Rectangle(Ui.Px(14), Height - _footerH + Ui.Px(4), Width - Ui.Px(28), Ui.Px(18)),
-                Theme.TextSub,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            if (IconHidden)
+            {
+                TextRenderer.DrawText(
+                    g, "图标已隐藏 · 点这里显示浮动图标", _fontMeta,
+                    new Rectangle(Ui.Px(14), Height - _footerH + Ui.Px(4), Width - Ui.Px(28), Ui.Px(18)),
+                    _hotFooter ? Theme.TextMain : Theme.Accent,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            }
+            else
+            {
+                TextRenderer.DrawText(
+                    g, "↑↓ 选择 · Enter 复制 · Del 删除 · Esc 关闭 · 可拖动", _fontMeta,
+                    new Rectangle(Ui.Px(14), Height - _footerH + Ui.Px(4), Width - Ui.Px(28), Ui.Px(18)),
+                    Theme.TextSub,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            }
         }
 
         protected override void OnResize(EventArgs e)

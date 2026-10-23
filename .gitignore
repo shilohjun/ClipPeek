@@ -22,6 +22,7 @@ portable.txt
 
 # 工具
 tools/gh/
+tools/ghcfg/
 tools/inno/
 
 # 常规

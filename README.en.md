@@ -114,7 +114,15 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | `Ctrl+Alt+V` | Global hotkey for the history panel |
 | `Ctrl+Alt+C` | Start ClipPeek **when it is not running** (create the Start menu shortcut once from the menu first) |
 
-**Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it.
+**Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it. **Drag any empty part of the panel (header or footer) to move it**; the position is remembered, and "reset position" clears it.
+
+**I hid the floating icon — how do I get it back?** Any of these:
+
+1. **Double-click the tray icon** (the tray menu also has "show floating icon")
+2. Press `Ctrl+Alt+V` and click the footer link in the history panel: "icon hidden · click here to show it"
+3. If the icon is still hidden on the next launch, ClipPeek tells you
+
+Hiding it also pops a bubble that explains how to restore it.
 
 ---
 

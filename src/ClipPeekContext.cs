@@ -113,6 +113,8 @@ namespace ClipPeek
             _panel = new HistoryForm(_history);
             _panel.ItemActivated += OnItemActivated;
             _panel.ImageDropped += OnImageDropped;
+            _panel.PositionChanged += OnPanelPositionChanged;
+            _panel.ShowIconRequested += OnShowIconRequested;
 
             BuildMenu();
             _icon.IconMenu = _menu;
@@ -158,6 +160,16 @@ namespace ClipPeek
             }
 
             if (_settings.PlayIntro) PlayIntro();
+
+            if (_settings.Hidden)
+            {
+                // 上次退出时图标是隐藏状态：启动就告诉用户怎么找回来
+                Rectangle trayCorner = new Rectangle(
+                    Screen.PrimaryScreen.WorkingArea.Right - Ui.Px(120),
+                    Screen.PrimaryScreen.WorkingArea.Bottom - Ui.Px(16),
+                    Ui.Px(48), Ui.Px(48));
+                _bubble.ShowNote("ClipPeek 在后台运行 · 双击托盘图标可让图标重新出现", trayCorner);
+            }
         }
 
         private void LoadCustomIcon()
@@ -416,7 +428,7 @@ namespace ClipPeek
         {
             _bubble.HideBubble();
             if (_sawPanelVisible) _panel.HidePanel();
-            else _panel.ShowPanel(Anchor);
+            else ShowPanelNow();
         }
 
         private void OnIconDragFinished(object sender, EventArgs e)
@@ -430,7 +442,53 @@ namespace ClipPeek
         private void OnBubbleClicked(object sender, EventArgs e)
         {
             _bubble.HideBubble();
-            _panel.ShowPanel(Anchor);
+            ShowPanelNow();
+        }
+
+        private void OnPanelPositionChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                _settings.HasPanelPosition = true;
+                _settings.PanelX = _panel.Left;
+                _settings.PanelY = _panel.Top;
+                _settings.Save();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnPanelPositionChanged", ex);
+            }
+        }
+
+        private void OnShowIconRequested(object sender, EventArgs e)
+        {
+            try
+            {
+                _settings.Hidden = false;
+                _settings.Save();
+                ApplyIconVisibility();
+                _panel.HidePanel();
+                _bubble.ShowNote("图标回来了 · 直接拖动它就能换位置", Anchor);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnShowIconRequested", ex);
+            }
+        }
+
+        /// <summary>统一的「打开历史面板」入口：优先用拖动后记住的位置，没拖过就贴着图标。</summary>
+        private void ShowPanelNow()
+        {
+            _panel.IconHidden = _settings.Hidden;
+            _panel.ShowPanel(Anchor, _settings.HasPanelPosition,
+                new Point(_settings.PanelX, _settings.PanelY));
+        }
+
+        private Rectangle CursorAnchor()
+        {
+            int size = Ui.Px(48);
+            Point point = Cursor.Position;
+            return new Rectangle(point.X - size / 2, point.Y - size / 2, size, size);
         }
 
         private void OnItemActivated(object sender, ClipItem item)
@@ -507,7 +565,7 @@ namespace ClipPeek
             SkipIntro();
             _bubble.HideBubble();
             if (_panel.Visible) _panel.HidePanel();
-            else _panel.ShowPanel(Anchor);
+            else ShowPanelNow();
         }
 
         private void OnHotKey(object sender, EventArgs e)
@@ -546,6 +604,11 @@ namespace ClipPeek
                 _settings.Hidden = !_settings.Hidden;
                 _settings.Save();
                 ApplyIconVisibility();
+
+                if (_settings.Hidden)
+                {
+                    _bubble.ShowNote("图标已隐藏 · 双击托盘图标，或按 Ctrl+Alt+V 打开历史面板", CursorAnchor());
+                }
             };
 
             ToolStripMenuItem resetItem = new ToolStripMenuItem("恢复默认位置");
@@ -553,6 +616,7 @@ namespace ClipPeek
             {
                 _settings.Hidden = false;
                 _settings.HasPosition = false;
+                _settings.HasPanelPosition = false;
                 _settings.Save();
                 ApplyIconVisibility();
                 _icon.PlaceDefault();
@@ -915,10 +979,18 @@ namespace ClipPeek
                 _hasAnchorOverride = true;
                 _anchorOverride = anchor;
 
-                _panel.ShowPanel(anchor);
+                _panel.ShowPanel(anchor, false, Point.Empty);
                 Pump(500);
                 Capture(_panel.Bounds, Path.Combine(directory, "panel.png"));
                 _panel.HidePanel();
+                Pump(200);
+
+                _panel.IconHidden = true;
+                _panel.ShowPanel(anchor, false, Point.Empty);
+                Pump(400);
+                Capture(_panel.Bounds, Path.Combine(directory, "panel-hidden.png"));
+                _panel.HidePanel();
+                _panel.IconHidden = false;
                 Pump(200);
 
                 Rectangle north = new Rectangle(
@@ -1124,7 +1196,7 @@ namespace ClipPeek
                 check("bubble.hide", !_bubble.Visible);
 
                 Program.Trace("selftest: panel");
-                _panel.ShowPanel(_anchorOverride);
+                _panel.ShowPanel(_anchorOverride, false, Point.Empty);
                 check("panel.show", _panel.Visible && _panel.Width == _panel.PanelWidth);
                 _panel.HidePanel();
                 check("panel.hide", !_panel.Visible);

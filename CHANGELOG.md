@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Start menu shortcut with launch key** — "create Start menu shortcut (Ctrl+Alt+C)" menu item, so ClipPeek can be started even when it is not running.
 - `--preview` now also renders launch-animation key frames and the crop dialog for documentation.
 
+- **History panel is draggable** — hold any empty part of the panel (header or footer) to move it; the position is remembered separately from the floating icon and "reset position" clears it.
+- **Hiding the icon is recoverable now** — hiding it pops a bubble explaining how to restore it, the panel footer turns into an "icon hidden · click here" link, and a hint appears on the next launch if the icon is still hidden.
+
 ### Fixed
 
 - Restoring a file entry used to write only the path text, so pasting into Explorer did nothing. It now puts the real files back on the clipboard (`CF_HDROP`) with a path-text fallback; when the files no longer exist it copies paths instead, says so in the bubble, and the history panel marks such entries with "files gone".
