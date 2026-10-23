@@ -1,0 +1,232 @@
+# ClipPeek
+
+<p align="center">
+  <img src="assets/banner.png" alt="ClipPeek — see exactly what you copied" width="880">
+</p>
+
+<h2 align="center">ClipPeek</h2>
+
+<p align="center">
+  <a href="README.md">中文</a> | <a href="README.en.md">English</a>
+</p>
+
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-brightgreen">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6">
+  <img alt="Size" src="https://img.shields.io/badge/exe-57%20KB-success">
+  <a href="https://github.com/shilohjun/ClipPeek/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/shilohjun/ClipPeek/total"></a>
+</p>
+
+> 复制完抬头就能看见：**刚才到底复制成功没有、复制了什么。**
+
+按下 Ctrl+C 之后，你是不是也经常这样：不确定有没有复制上，只好切到别处按一下 Ctrl+V 试试；或者复制了三段东西，回头想不起剪贴板里现在到底是哪一段。
+
+Windows 的剪贴板是**完全没有反馈**的。ClipPeek 就是给这个动作补上反馈和记忆：
+
+- **复制瞬间**：屏幕角落弹出气泡，「已复制 · 文本 · 42 字」+ 两行内容预览；复制图片显示缩略图，复制多个文件显示数量。
+- **随时回看**：桌面边上一个可拖动的小图标，单击就展开历史面板，200 条记录，点一条就复制回剪贴板。
+
+一个 57 KB 的单文件程序，不装运行时、不写注册表、不要管理员权限。
+
+---
+
+## 为什么会有这个东西
+
+起因很朴素：在终端里按 Ctrl+C，有时是复制，有时是打断命令；复制了长日志想确认抓到没有，只能靠粘出来看一眼。网上的剪贴板管理器都要求你**先按热键唤出窗口**才知道结果——顺序反了。
+
+ClipPeek 的顺序是反过来的：**复制是主语，反馈是自动的**。你什么都不用做，气泡自己会告诉你结果；历史面板只在你想翻旧账的时候才需要打开。
+
+---
+
+## 它能做什么
+
+| | |
+|---|---|
+| ✅ **复制确认气泡** | 类型 + 字数/尺寸 + 最多两行预览；2.5 秒自动淡出，鼠标悬停暂停，点气泡直接开历史 |
+| ✅ **图片缩略图** | 复制截图或图片时气泡里给缩略图，尺寸和体积都标出来 |
+| ✅ **可拖动的浮动图标** | 放在哪都行，位置记住；单击开面板、右键出菜单、拖动 4px 才判定为拖动 |
+| ✅ **剪贴历史面板** | 最近 200 条，类型标签 + 时间 + 内容首行；单击复制回剪贴板，`Del` 删除，`Esc` 关闭 |
+| ✅ **全局热键** | `Ctrl+Alt+V` 随时召出面板，图标被挡住也不影响 |
+| ✅ **托盘兜底** | 浮动图标被拖丢 / 被全屏盖住时，托盘图标永远在 |
+| ✅ **尊重敏感内容** | 带 Windows「Clipboard Viewer Ignore」标记的内容（密码管理器会打）完全不记录、不弹窗 |
+| ✅ **全屏自动让路** | 玩游戏、看全屏视频、演示时自动隐藏，退出全屏 1 秒内回来 |
+| ✅ **高分屏清晰** | 声明 DPI 感知，200% 缩放下不糊（不是被系统拉伸的位图） |
+| ✅ **深色/浅色跟随** | 读系统主题，面板和气泡自动配 |
+
+---
+
+## 截图
+
+| 历史面板 | 文本气泡 |
+|---|---|
+| ![历史面板](screenshots/panel.png) | ![文本气泡](screenshots/bubble-text.png) |
+
+| 图片气泡 | 浮动图标 |
+|---|---|
+| ![图片气泡](screenshots/bubble-image.png) | ![浮动图标](screenshots/icon.png) |
+
+---
+
+## 安装
+
+### 方式一：安装包（推荐）
+
+去 [Releases](https://github.com/shilohjun/ClipPeek/releases) 下载 `ClipPeek-Setup-1.0.0.exe`，双击即可。
+
+- 装到 `%LOCALAPPDATA%\Programs\ClipPeek`，**不需要管理员权限**
+- 开始菜单快捷方式必建；桌面快捷方式和开机自启是可选项（开机自启默认勾上）
+- 卸载走「设置 → 应用 → ClipPeek」，**历史记录不会被删**
+
+### 方式二：免安装便携版
+
+下载 `ClipPeek-1.0.0-portable.zip`，解压到任意目录，双击 `ClipPeek.exe`。
+
+包里有 `portable.txt`，程序会把 `history.json` / `settings.json` 写在 exe 旁边，整个文件夹可以拷进 U 盘带走。
+
+### 方式三：自己编译
+
+见下面「[从源码构建](#从源码构建)」，只需要系统自带的 .NET Framework 编译器。
+
+> ⚠️ **没有代码签名证书**：安装包和 exe 首次运行会触发 SmartScreen 蓝色提示（"Windows 已保护你的电脑"）。点「更多信息」→「仍要运行」即可。介意的话直接看源码编译，全部代码就在这个仓库里。
+
+---
+
+## 用法
+
+| 动作 | 结果 |
+|---|---|
+| 复制任意内容 | 图标闪一下绿边 + 旁边弹气泡（类型 / 字数 / 预览 / 缩略图） |
+| **单击**浮动图标 | 展开 / 收起剪贴历史面板 |
+| **拖动**浮动图标 | 挪到任意位置，松手自动记住；下次启动回到原处 |
+| **右键**浮动图标 | 打开历史 / 暂停监听 / 开机自启 / 隐藏图标 / 恢复默认位置 / 打开数据目录 / 清空历史 / 退出 |
+| 单击托盘图标 | 同「单击浮动图标」（图标丢了时的后备入口） |
+| 双击托盘图标 | 把隐藏的浮动图标叫回来 |
+| `Ctrl+Alt+V` | 全局热键，随时召出历史面板 |
+
+**历史面板里**：`↑` `↓` 选择 · `Enter` 复制回剪贴板 · `Del` 删除 · `Esc` 关闭 · 单击复制 · 右键菜单 · 点面板外面自动收起。
+
+---
+
+## 数据与隐私
+
+| 文件 | 位置 | 内容 |
+|---|---|---|
+| `history.json` | 安装版：`%APPDATA%\ClipPeek\`<br>便携版：exe 同目录 | 最近 200 条记录 |
+| `settings.json` | 同上 | 图标位置、暂停状态、自启开关 |
+| `clip-peek.log` | 同上 | **只在出错时**写入，平时不产生 |
+
+**完全本地**：没有任何网络请求、没有账号、没有遥测。所有内容只在你自己的磁盘上。
+
+跳过规则：
+
+- 带「Clipboard Viewer Ignore」标记的内容（1Password、Bitwarden 等密码管理器会打）→ 不记录、不弹窗
+- 图片只记录尺寸描述，**不把图片本身写进磁盘**
+- 单条文本超过 200000 字 → 仍记历史，但不弹气泡（避免巨量文本卡界面）
+
+想彻底删干净：退出程序，删掉数据目录，再删安装目录即可。安装版卸载时故意保留数据目录。
+
+---
+
+## 已知取舍
+
+- **图片不能回填**：历史里只有「1920×1080」这样的描述，点它只会提示「未保存图片本身，无法回填」。换来的是截图不会悄悄堆在磁盘上。
+- **相同内容会合并**：连续复制同一段文字会合并成一条并把时间刷新到最前，不会把 200 条容量刷成重复项。
+- **没有搜索框**：200 条以内的历史靠滚动和类型标签就够了；加搜索会引入输入焦点，和「点面板外面就收起」冲突。
+- **注释是中文**：代码注释保持中文，README 提供英文版。
+
+---
+
+## 常见问题
+
+**图标不见了？**
+先双击托盘图标（或托盘右键 →「显示浮动图标」）。播放全屏视频 / 玩游戏 / 演示时它是故意隐藏的，退出全屏 1 秒内自动回来。
+
+**某次复制没弹气泡？**
+三种可能：文本超过 20 万字（只记历史不弹气泡）、内容带了密码管理器的禁止记录标记（完全不记录）、托盘菜单里勾了「暂停监听」。
+
+**换了分辨率或缩放，图标跑到奇怪的地方？**
+右键图标 →「恢复默认位置」。
+
+**双屏？**
+图标默认在主屏右侧，可以直接拖到另一块屏上，位置会记住。
+
+**热键和别的软件冲突？**
+改 `src/ClipPeekContext.cs` 里 `Native.RegisterHotKey(..., 0x56)` 的 `0x56`（字母 V），重新编译。
+
+**想开机不启动？**
+托盘/图标右键菜单里取消勾选「开机自启」，会删掉启动文件夹里的快捷方式。
+
+---
+
+## 从源码构建
+
+只需要 Windows 自带的 .NET Framework 编译器（`csc.exe`），不需要 Visual Studio 或 .NET SDK。
+
+```powershell
+# 编译到 dist\ClipPeek.exe
+powershell -ExecutionPolicy Bypass -File build.ps1
+
+# 跑自测 + 打便携包 + 打安装包（安装包需要 Inno Setup 6 的 ISCC.exe）
+powershell -ExecutionPolicy Bypass -File package.ps1
+```
+
+自测会把 10 项检查跑一遍（历史去重、落盘往返、剪贴板捕获、气泡显隐、面板显隐、回填、图片不可回填…），任何一项 FAIL 都会让 `package.ps1` 中止。
+
+素材（图标 / logo / 横幅）不是手画的，是调用程序自己的绘制代码生成：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\make-assets.ps1
+```
+
+### 版本号
+
+只有一个来源：`installer/version.iss` 里的 `AppVersion`。`package.ps1` 和安装包脚本都读它。
+
+---
+
+## 仓库结构
+
+```
+ClipPeek/
+├── src/                     C# 源码（C# 5 语法，兼容 .NET Framework 4.x）
+│   ├── Program.cs           入口、单实例、命令行参数
+│   ├── ClipPeekContext.cs   主控：轮询剪贴板、托盘、热键、菜单、全屏隐藏、自测
+│   ├── IconForm.cs          可拖动的浮动图标（拖动 vs 点击判定）
+│   ├── BubbleForm.cs        气泡卡片（淡入 / 停留 / 淡出）
+│   ├── HistoryForm.cs       历史面板（自绘列表、键盘操作）
+│   ├── ClipboardWatcher.cs  剪贴板读取（重试、敏感标记、缩略图）
+│   ├── HistoryStore.cs      历史存储（JSON、去重、200 条上限）
+│   ├── Settings.cs          设置存储
+│   ├── Paths.cs             数据目录策略（便携 / 安装）
+│   ├── Theme.cs             明暗主题与图标绘制
+│   ├── Ui.cs                DPI 缩放
+│   ├── Native.cs            Win32 P/Invoke
+│   ├── Autostart.cs         启动文件夹快捷方式
+│   └── Log.cs               仅在出错时写日志
+├── installer/                Inno Setup 安装包脚本 + 版本号
+├── assets/                   图标、logo、README 横幅（由脚本生成）
+├── screenshots/              真实截图
+├── tools/make-assets.ps1     生成图标与横幅
+├── build.ps1                 编译
+├── package.ps1               自测 + 便携包 + 安装包 + 校验和
+├── dist/                     产物（dist/ClipPeek.exe 也提交了一份，方便直接取）
+└── .github/workflows/        CI：编译 + 自测 + 打包
+```
+
+> `dist/ClipPeek.exe` 是随源码提交的便利快照，可能落后于 `src/`；以 Releases 里的产物为准。
+
+---
+
+## 兼容性
+
+- Windows 10（1809+）/ Windows 11，x64 与 ARM64（AnyCPU）
+- 依赖 .NET Framework 4.x（Win10 1903 之后系统自带）
+- 高 DPI（含 200% 缩放）与多显示器
+- 不做任何网络访问
+
+---
+
+## 许可
+
+[MIT](LICENSE)
