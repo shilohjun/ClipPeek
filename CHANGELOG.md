@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-23
+
+### Fixed
+
+- The toggle items in the right-click menu ("pause monitoring", "start with Windows", "play the launch animation", "cursor glow on copy") never showed a check mark, because the menu had `ShowImageMargin = false` without `ShowCheckMargin = true` — the check area had nowhere to be drawn, so the items looked like plain commands. The menu now reserves a check column, and all four toggles use `CheckOnClick` so the tick flips visibly and the state is read back from the item.
+
 ## [1.3.0] - 2026-10-23
 
 ### Added

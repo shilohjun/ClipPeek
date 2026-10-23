@@ -612,22 +612,26 @@ namespace ClipPeek
         {
             _menu = new ContextMenuStrip();
             _menu.ShowImageMargin = false;
+            // 没有这一行，Checked 的勾根本画不出来
+            _menu.ShowCheckMargin = true;
             _menu.ShowItemToolTips = true;
 
             ToolStripMenuItem openItem = new ToolStripMenuItem("打开剪贴历史      Ctrl+Alt+V");
             openItem.Click += delegate { TogglePanel(); };
 
             _pauseItem = new ToolStripMenuItem("暂停监听");
+            _pauseItem.CheckOnClick = true;
             _pauseItem.Click += delegate
             {
-                _settings.Paused = !_settings.Paused;
+                _settings.Paused = _pauseItem.Checked;
                 _settings.Save();
             };
 
             _autoItem = new ToolStripMenuItem("开机自启");
+            _autoItem.CheckOnClick = true;
             _autoItem.Click += delegate
             {
-                _settings.AutoStart = !_settings.AutoStart;
+                _settings.AutoStart = _autoItem.Checked;
                 _settings.Save();
                 if (_settings.AutoStart) Autostart.Enable();
                 else Autostart.Disable();
@@ -702,16 +706,18 @@ namespace ClipPeek
             _resetIconItem.Click += delegate { ResetIcon(); };
 
             _introItem = new ToolStripMenuItem("启动时播开场动画");
+            _introItem.CheckOnClick = true;
             _introItem.Click += delegate
             {
-                _settings.PlayIntro = !_settings.PlayIntro;
+                _settings.PlayIntro = _introItem.Checked;
                 _settings.Save();
             };
 
             _glowItem = new ToolStripMenuItem("复制时光标光晕");
+            _glowItem.CheckOnClick = true;
             _glowItem.Click += delegate
             {
-                _settings.CursorGlow = !_settings.CursorGlow;
+                _settings.CursorGlow = _glowItem.Checked;
                 _settings.Save();
                 if (!_settings.CursorGlow) _cursorGlow.Stop();
             };
@@ -1053,6 +1059,12 @@ namespace ClipPeek
                 Capture(_panel.Bounds, Path.Combine(directory, "panel-hidden.png"));
                 _panel.HidePanel();
                 _panel.IconHidden = false;
+                // 右键菜单：验证勾选项真的画得出来
+                _menu.Show(new Point(Ui.Px(120), Ui.Px(120)));
+                Pump(400);
+                Capture(_menu.Bounds, Path.Combine(directory, "menu.png"));
+                _menu.Close();
+                Pump(200);
                 Pump(200);
 
                 Rectangle north = new Rectangle(
