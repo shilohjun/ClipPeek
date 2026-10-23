@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -167,8 +167,18 @@ namespace ClipPeek
         {
             base.OnHandleCreated(e);
             Native.MakeNoActivate(Handle);
-            if (Width != _box || Height != _box) Size = new Size(_box, _box);
-            Theme.RoundForm(this, _radius);
+
+            // 已经吸附时不能再把尺寸强行改回整枚图标，否则吸附状态会被立刻抹掉
+            if (IsDocked)
+            {
+                ApplyDockGeometry();
+            }
+            else
+            {
+                if (Width != _box || Height != _box) Size = new Size(_box, _box);
+                Theme.RoundForm(this, _radius);
+            }
+
             RebuildBitmaps();
         }
 
@@ -243,6 +253,9 @@ namespace ClipPeek
                 Size = new Size(_box, _box);
                 Theme.RoundForm(this, _radius);
                 Opacity = 0.85;
+
+                // 从右边/下边解除吸附后窗口会多出半枚图标，必须拉回屏幕内
+                ClampToScreen();
                 Invalidate();
             }
         }

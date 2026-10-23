@@ -126,6 +126,8 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 
 **Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it. The panel **follows the floating icon** by default (move the icon and the panel opens there next time); it can only be dragged while the icon is hidden, and then its own position is remembered.
 
+**A menu item did nothing / changing the icon failed?**
+Check for a bubble first — every such action now reports why. The most common cause is a **data directory that refuses writes** (locked-down corporate machines do this to `%APPDATA%`): ClipPeek then falls back to `%LOCALAPPDATA%\ClipPeek` and finally to the folder next to the exe, and tells you which one it is at startup. "open data folder" takes you straight there.
 **The icon snapped to an edge — how do I get it back out?** Three ways:
 
 1. Just **drag it away from the edge** — more than 24 px and it unsnaps

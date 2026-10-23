@@ -30,6 +30,24 @@ namespace ClipPeek
             }
         }
 
+        /// <summary>数据目录是否真的能写（有些环境会在 %APPDATA% 上拦写入）。</summary>
+        internal static bool CanWrite(string directory)
+        {
+            try
+            {
+                Directory.CreateDirectory(directory);
+                string probe = Path.Combine(directory, ".write-probe");
+                File.WriteAllText(probe, "1");
+                File.Delete(probe);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Program.Trace("paths: cannot write '" + directory + "': " + ex.GetType().Name);
+                return false;
+            }
+        }
+
         private static string Resolve()
         {
             try
@@ -44,19 +62,42 @@ namespace ClipPeek
             {
             }
 
+            string roaming = null;
             try
             {
                 string roamingRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 Program.Trace("paths: roamingRoot='" + roamingRoot + "'");
-                string roaming = Path.Combine(roamingRoot, "ClipPeek");
-                Directory.CreateDirectory(roaming);
-                return roaming;
+                roaming = Path.Combine(roamingRoot, "ClipPeek");
+                if (CanWrite(roaming)) return roaming;
             }
             catch (Exception ex)
             {
-                Program.Trace("paths: fallback to exe dir, reason=" + ex.GetType().Name + ": " + ex.Message);
+                Program.Trace("paths: roaming failed, reason=" + ex.GetType().Name);
+            }
+
+            // %APPDATA% 写不进去时依次退到 LOCALAPPDATA、再退到 exe 同目录
+            try
+            {
+                string localRoot = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string local = Path.Combine(localRoot, "ClipPeek");
+                if (CanWrite(local))
+                {
+                    Program.Trace("paths: falling back to local appdata=" + local);
+                    return local;
+                }
+            }
+            catch
+            {
+            }
+
+            if (CanWrite(ExeDirectory))
+            {
+                Program.Trace("paths: falling back to exe dir=" + ExeDirectory);
                 return ExeDirectory;
             }
+
+            Program.Trace("paths: no writable dir, using roaming anyway=" + roaming);
+            return roaming ?? ExeDirectory;
         }
     }
 }

@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-10-23
+
+### Fixed
+
+- **"open data folder" did nothing** — the command passed the folder with a trailing backslash, and `"C:\path\"` escapes its own closing quote on the Windows command line, so Explorer received a broken path. The trailing separator is now stripped and the call uses an explicit `UseShellExecute` process start, with a bubble showing the real error if it still fails.
+- **Unsnapping did not restore the icon at startup** — `OnHandleCreated` forced the window back to the full icon size, which wiped the snap applied by `PositionIcon`, so a docked icon stayed half-drawn even after "unsnap". The handle-created path now applies the dock geometry instead of clamping the size.
+- **Unsnapping from the right or bottom edge left half the icon off-screen** — the window grows from half to full size around its old position, so it is now clamped back into the working area.
+- **Icon changes, shortcut creation and data-folder failures were completely silent** — the exceptions only went to the log. Every such action now reports the reason and the path in a bubble, and the icon-save failure names the data directory explicitly.
+- **The data directory is no longer assumed to be writable** — if `%APPDATA%\ClipPeek` refuses writes the app falls back to `%LOCALAPPDATA%\ClipPeek` and then to the folder next to the exe, and says so in a bubble at startup instead of silently losing the history.
+
 ## [1.3.1] - 2026-10-23
 
 ### Fixed

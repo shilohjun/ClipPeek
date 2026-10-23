@@ -139,6 +139,12 @@ namespace ClipPeek
             _icon.RebuildBitmaps();
             Program.Trace("start: icon shown at " + _icon.Left + "," + _icon.Top);
 
+            if (!Paths.CanWrite(_directory))
+            {
+                Log.Error("DataDirectoryNotWritable", new Exception(_directory));
+                _bubble.ShowNote("数据目录不可写，历史和图标都存不下来：" + _directory, Anchor);
+            }
+
             CreateTray();
             Program.Trace("start: tray ok");
 
@@ -680,17 +686,7 @@ namespace ClipPeek
             _clearItem.Click += delegate { _history.Clear(); };
 
             ToolStripMenuItem openDataItem = new ToolStripMenuItem("打开数据目录");
-            openDataItem.Click += delegate
-            {
-                try
-                {
-                    System.Diagnostics.Process.Start("explorer.exe", "\"" + _directory + "\"");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("OpenDataDirectory", ex);
-                }
-            };
+            openDataItem.Click += delegate { OpenDataDirectory(); };
 
             ToolStripMenuItem exitItem = new ToolStripMenuItem("退出");
             exitItem.Click += delegate { ExitApp(); };
@@ -785,6 +781,19 @@ namespace ClipPeek
 
         private void SetCustomIconFrom(string path)
         {
+            try
+            {
+                SetCustomIconCore(path);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("SetCustomIconFrom", ex);
+                _bubble.ShowNote("换图标失败：" + ex.Message, Anchor);
+            }
+        }
+
+        private void SetCustomIconCore(string path)
+        {
             using (IconCropForm dialog = new IconCropForm(path, _directory))
             {
                 DialogResult result = dialog.ShowDialog();
@@ -800,7 +809,7 @@ namespace ClipPeek
                 Bitmap custom = IconImage.Load(IconImage.Path_(_directory));
                 if (custom == null)
                 {
-                    _bubble.ShowNote("图标保存失败", Anchor);
+                    _bubble.ShowNote("图标没存下来（数据目录不可写）：" + _directory, Anchor);
                     return;
                 }
 
@@ -859,6 +868,26 @@ namespace ClipPeek
 
         // ---------- 没在运行时怎么快速打开 ----------
 
+        /// <summary>打开数据目录。路径末尾的反斜杠会吃掉引号，必须先去掉。</summary>
+        private void OpenDataDirectory()
+        {
+            try
+            {
+                Directory.CreateDirectory(_directory);
+                string target = _directory.TrimEnd('\\', '/');
+
+                System.Diagnostics.ProcessStartInfo info = new System.Diagnostics.ProcessStartInfo();
+                info.FileName = "explorer.exe";
+                info.Arguments = "\"" + target + "\"";
+                info.UseShellExecute = true;
+                System.Diagnostics.Process.Start(info);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OpenDataDirectory", ex);
+                _bubble.ShowNote("打不开数据目录：" + ex.Message + "（路径：" + _directory + "）", Anchor);
+            }
+        }
         private void CreateStartMenuShortcut()
         {
             try
@@ -1430,6 +1459,17 @@ namespace ClipPeek
                     && CursorGlow.OpacityAt(0) < 0.01
                     && CursorGlow.OpacityAt(0.10) > 0.99
                     && CursorGlow.OpacityAt(1) < 0.01);
+
+                // 吸附进出：吸附时窗口真的一半，解除后整枚回到屏幕内
+                Rectangle dockWork = Screen.FromPoint(_icon.Bounds.Location).WorkingArea;
+                _icon.DockTo(SnapEdge.Right);
+                bool dockEntered = _icon.IsDocked
+                    && _icon.Width == Ui.Px(48) / 2 && _icon.Height == Ui.Px(48)
+                    && _icon.Right == dockWork.Right;
+                _icon.Undock();
+                bool dockExited = !_icon.IsDocked && _icon.Width == Ui.Px(48)
+                    && _icon.Right <= dockWork.Right;
+                check("dock.enter+exit", dockEntered && dockExited);
 
                 output.AppendLine("SKIP sensitive-flag (需真实密码管理器触发)");
                 output.AppendLine("SKIP hotkey (需真实按键)");
