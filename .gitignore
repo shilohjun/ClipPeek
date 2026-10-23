@@ -1,0 +1,28 @@
+# 构建产物
+dist/*.zip
+dist/*-Setup-*.exe
+dist/SHA256SUMS.txt
+dist/selftest-result.txt
+dist/_*
+assets/_*.png
+_preview/
+_selftest/
+_*.txt
+.npm-cache/
+preview/
+
+# 运行时数据（属于用户，不进仓库）
+history.json
+settings.json
+clip-peek.log
+portable.txt
+
+# 工具
+tools/gh/
+tools/inno/
+
+# 常规
+*.user
+.vs/
+bin/
+obj/
