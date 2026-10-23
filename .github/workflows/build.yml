@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: build, self-test and package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build, self-test and package
+        shell: pwsh
+        run: ./package.ps1 -AllowChocoInstall
+
+      - name: List artifacts
+        shell: pwsh
+        run: Get-ChildItem dist -File | Format-Table Name, Length -AutoSize
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipPeek-windows
+          if-no-files-found: error
+          path: |
+            dist/ClipPeek.exe
+            dist/ClipPeek-Setup-*.exe
+            dist/ClipPeek-*-portable.zip
+            dist/SHA256SUMS.txt
+            dist/selftest-result.txt
