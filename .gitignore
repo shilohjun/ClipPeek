@@ -7,6 +7,9 @@ dist/_*
 assets/_*.png
 _preview/
 _selftest/
+_tmp/
+_ci/
+_rel/
 _*.txt
 .npm-cache/
 preview/
@@ -26,3 +29,4 @@ tools/inno/
 .vs/
 bin/
 obj/
+

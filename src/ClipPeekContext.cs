@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -53,6 +55,12 @@ namespace ClipPeek
         private ToolStripMenuItem _autoItem;
         private ToolStripMenuItem _hideItem;
         private ToolStripMenuItem _clearItem;
+        private ToolStripMenuItem _introItem;
+        private ToolStripMenuItem _adjustIconItem;
+        private ToolStripMenuItem _cropIconItem;
+        private ToolStripMenuItem _resetIconItem;
+
+        private IntroForm _intro;
 
         private System.Windows.Forms.Timer _clipTimer;
         private System.Windows.Forms.Timer _fullScreenTimer;
@@ -97,12 +105,14 @@ namespace ClipPeek
             _icon.Pressed += OnIconPressed;
             _icon.Clicked += OnIconClicked;
             _icon.DragFinished += OnIconDragFinished;
+            _icon.ImageDropped += OnImageDropped;
 
             _bubble = new BubbleForm();
             _bubble.Clicked += OnBubbleClicked;
 
             _panel = new HistoryForm(_history);
             _panel.ItemActivated += OnItemActivated;
+            _panel.ImageDropped += OnImageDropped;
 
             BuildMenu();
             _icon.IconMenu = _menu;
@@ -114,6 +124,8 @@ namespace ClipPeek
         {
             if (_started) return;
             _started = true;
+
+            LoadCustomIcon();
 
             _icon.Show();
             ApplyIconVisibility();
@@ -144,6 +156,85 @@ namespace ClipPeek
                 Program.Trace("fullscreen-hide=" + Native.ShouldHideForFullScreen());
                 Program.Trace("fullscreen-report: " + Native.FullScreenReport());
             }
+
+            if (_settings.PlayIntro) PlayIntro();
+        }
+
+        private void LoadCustomIcon()
+        {
+            try
+            {
+                if (!IconImage.Exists(_directory)) return;
+                Bitmap custom = IconImage.Load(IconImage.Path_(_directory));
+                if (custom != null) Theme.SetCustomIcon(custom);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("LoadCustomIcon", ex);
+            }
+        }
+
+        private void ReloadIconBitmaps()
+        {
+            try
+            {
+                _icon.RebuildBitmaps();
+                if (_tray != null)
+                {
+                    Icon old = _tray.Icon;
+                    _tray.Icon = Theme.MakeIcon(Ui.Px(32));
+                    if (old != null) old.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("ReloadIconBitmaps", ex);
+            }
+        }
+
+        internal void PlayIntro()
+        {
+            if (_intro != null) return;
+
+            try
+            {
+                if (_settings.Hidden || _hiddenForFullScreen) return;
+
+                Rectangle target = _icon.Bounds;
+                Bitmap icon = Theme.BuildBitmap(target.Width, false);
+
+                _icon.Hide();
+
+                IntroForm intro = new IntroForm(icon, target);
+                _intro = intro;
+                intro.Finished += delegate
+                {
+                    _intro = null;
+                    try
+                    {
+                        if (!_settings.Hidden && !_hiddenForFullScreen) _icon.Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("PlayIntro.ShowIcon", ex);
+                    }
+                    if (icon != null) icon.Dispose();
+                    intro.Dispose();
+                };
+                intro.Begin();
+                Program.Trace("intro started");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("PlayIntro", ex);
+                if (_intro != null) { _intro.Dispose(); _intro = null; }
+                try { if (!_settings.Hidden && !_hiddenForFullScreen) _icon.Show(); } catch { }
+            }
+        }
+
+        private void SkipIntro()
+        {
+            if (_intro != null) _intro.Skip();
         }
 
         private void PositionIcon()
@@ -353,6 +444,12 @@ namespace ClipPeek
                 return;
             }
 
+            if (item.Kind == ClipKind.Files)
+            {
+                RestoreFiles(item);
+                return;
+            }
+
             string text = item.RestoreText;
             if (!ClipboardWatcher.SetText(text))
             {
@@ -360,14 +457,54 @@ namespace ClipPeek
                 return;
             }
 
-            _suppressUntil = DateTime.UtcNow.AddMilliseconds(400);
-            _lastSeq = Native.GetClipboardSequenceNumber();
+            MarkClipboardRestored();
             _panel.HidePanel();
             _bubble.ShowNote("已复制回剪贴板", Anchor);
         }
 
+        /// <summary>
+        /// 文件类记录回填：优先放回真正的文件（CF_HDROP），文件还在的话资源管理器里能直接粘贴。
+        /// 文件都不在了，就退回只复制路径，并明确告诉用户。
+        /// </summary>
+        private void RestoreFiles(ClipItem item)
+        {
+            int existing;
+            int total;
+            bool restored = ClipboardWatcher.SetFiles(item.Files, out existing, out total);
+
+            if (restored)
+            {
+                MarkClipboardRestored();
+                _panel.HidePanel();
+                _bubble.ShowNote(
+                    existing >= total
+                        ? "已放回 " + existing + " 个文件"
+                        : "已放回 " + existing + " / " + total + " 个文件（其余已不在原处）",
+                    Anchor);
+                return;
+            }
+
+            string paths = item.RestoreText;
+            if (!ClipboardWatcher.SetText(paths))
+            {
+                _bubble.ShowNote("写回剪贴板失败，请稍后再试", Anchor);
+                return;
+            }
+
+            MarkClipboardRestored();
+            _panel.HidePanel();
+            _bubble.ShowNote("文件已不在原处，这次只复制到了路径", Anchor);
+        }
+
+        private void MarkClipboardRestored()
+        {
+            _suppressUntil = DateTime.UtcNow.AddMilliseconds(400);
+            _lastSeq = Native.GetClipboardSequenceNumber();
+        }
+
         private void TogglePanel()
         {
+            SkipIntro();
             _bubble.HideBubble();
             if (_panel.Visible) _panel.HidePanel();
             else _panel.ShowPanel(Anchor);
@@ -382,6 +519,7 @@ namespace ClipPeek
         {
             _menu = new ContextMenuStrip();
             _menu.ShowImageMargin = false;
+            _menu.ShowItemToolTips = true;
 
             ToolStripMenuItem openItem = new ToolStripMenuItem("打开剪贴历史      Ctrl+Alt+V");
             openItem.Click += delegate { TogglePanel(); };
@@ -440,6 +578,29 @@ namespace ClipPeek
             ToolStripMenuItem exitItem = new ToolStripMenuItem("退出");
             exitItem.Click += delegate { ExitApp(); };
 
+            _adjustIconItem = new ToolStripMenuItem("更换图标…（也可直接拖图片到图标上）");
+            _adjustIconItem.ToolTipText = "选一张图片，或者直接把图片拖到浮动图标上";
+            _adjustIconItem.Click += delegate { ChooseIconFile(); };
+
+            _cropIconItem = new ToolStripMenuItem("调整图标裁剪…");
+            _cropIconItem.Click += delegate { AdjustIcon(); };
+
+            _resetIconItem = new ToolStripMenuItem("恢复默认图标");
+            _resetIconItem.Click += delegate { ResetIcon(); };
+
+            _introItem = new ToolStripMenuItem("启动时播开场动画");
+            _introItem.Click += delegate
+            {
+                _settings.PlayIntro = !_settings.PlayIntro;
+                _settings.Save();
+            };
+
+            ToolStripMenuItem replayItem = new ToolStripMenuItem("重播开场动画");
+            replayItem.Click += delegate { PlayIntro(); };
+
+            ToolStripMenuItem shortcutItem = new ToolStripMenuItem("创建开始菜单快捷方式（Ctrl+Alt+C）");
+            shortcutItem.Click += delegate { CreateStartMenuShortcut(); };
+
             _menu.Items.Add(openItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_pauseItem);
@@ -447,6 +608,13 @@ namespace ClipPeek
             _menu.Items.Add(_hideItem);
             _menu.Items.Add(resetItem);
             _menu.Items.Add(openDataItem);
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(_adjustIconItem);
+            _menu.Items.Add(_cropIconItem);
+            _menu.Items.Add(_resetIconItem);
+            _menu.Items.Add(_introItem);
+            _menu.Items.Add(replayItem);
+            _menu.Items.Add(shortcutItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_clearItem);
             _menu.Items.Add(new ToolStripSeparator());
@@ -461,6 +629,139 @@ namespace ClipPeek
             _autoItem.Checked = _settings.AutoStart;
             _hideItem.Text = _settings.Hidden ? "显示浮动图标" : "隐藏浮动图标";
             _clearItem.Enabled = _history.Items.Count > 0;
+            _introItem.Checked = _settings.PlayIntro;
+            _resetIconItem.Enabled = Theme.CustomIcon != null;
+            _cropIconItem.Enabled = Theme.CustomIcon != null;
+        }
+
+        // ---------- 自定义图标 ----------
+
+        private void OnImageDropped(object sender, string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+
+            try
+            {
+                SkipIntro();
+                SetCustomIconFrom(path);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnImageDropped", ex);
+                _bubble.ShowNote("这张图片读不了，换一张试试", Anchor);
+            }
+        }
+
+        private void SetCustomIconFrom(string path)
+        {
+            using (IconCropForm dialog = new IconCropForm(path, _directory))
+            {
+                DialogResult result = dialog.ShowDialog();
+                if (result != DialogResult.OK) return;
+
+                if (dialog.ResetRequested)
+                {
+                    ReloadIconBitmaps();
+                    _bubble.ShowNote("已恢复默认图标", Anchor);
+                    return;
+                }
+
+                Bitmap custom = IconImage.Load(IconImage.Path_(_directory));
+                if (custom == null)
+                {
+                    _bubble.ShowNote("图标保存失败", Anchor);
+                    return;
+                }
+
+                Theme.SetCustomIcon(custom);
+                ReloadIconBitmaps();
+                _bubble.ShowNote("图标已更换", Anchor);
+            }
+        }
+
+        private void AdjustIcon()
+        {
+            if (Theme.CustomIcon != null && IconImage.Exists(_directory))
+            {
+                SetCustomIconFrom(IconImage.Path_(_directory));
+                return;
+            }
+
+            _bubble.ShowNote("把一张图片拖到图标上就能换", Anchor);
+        }
+
+        private void ChooseIconFile()
+        {
+            try
+            {
+                SkipIntro();
+                using (OpenFileDialog dialog = new OpenFileDialog())
+                {
+                    dialog.Title = "选择一张图片作为 ClipPeek 的图标（也可以直接把图片拖到浮动图标上）";
+                    dialog.Filter = "图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.ico;*.gif;*.tif;*.tiff;*.webp|所有文件|*.*";
+                    dialog.CheckFileExists = true;
+                    dialog.RestoreDirectory = true;
+                    if (dialog.ShowDialog() != DialogResult.OK) return;
+                    SetCustomIconFrom(dialog.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("ChooseIconFile", ex);
+            }
+        }
+
+        private void ResetIcon()
+        {
+            try
+            {
+                IconImage.Delete(_directory);
+                Theme.SetCustomIcon(null);
+                ReloadIconBitmaps();
+                _bubble.ShowNote("已恢复默认图标", Anchor);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("ResetIcon", ex);
+            }
+        }
+
+        // ---------- 没在运行时怎么快速打开 ----------
+
+        private void CreateStartMenuShortcut()
+        {
+            try
+            {
+                string programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+                string path = Path.Combine(programs, "ClipPeek.lnk");
+
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return;
+
+                object shell = Activator.CreateInstance(shellType);
+                object shortcut = shellType.InvokeMember(
+                    "CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { path });
+
+                Type shortcutType = shortcut.GetType();
+                string exe = Application.ExecutablePath;
+                shortcutType.InvokeMember("TargetPath", BindingFlags.SetProperty, null, shortcut, new object[] { exe });
+                shortcutType.InvokeMember("WorkingDirectory", BindingFlags.SetProperty, null, shortcut,
+                    new object[] { Path.GetDirectoryName(exe) });
+                shortcutType.InvokeMember("Description", BindingFlags.SetProperty, null, shortcut,
+                    new object[] { "ClipPeek 剪贴板气泡与历史" });
+                shortcutType.InvokeMember("IconLocation", BindingFlags.SetProperty, null, shortcut,
+                    new object[] { exe + ",0" });
+                shortcutType.InvokeMember("ShortcutKey", BindingFlags.SetProperty, null, shortcut,
+                    new object[] { "CTRL+ALT+C" });
+                shortcutType.InvokeMember("Save", BindingFlags.InvokeMethod, null, shortcut, null);
+
+                _bubble.ShowNote("已创建开始菜单快捷方式，Ctrl+Alt+C 启动", Anchor);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("CreateStartMenuShortcut", ex);
+                _bubble.ShowNote("创建快捷方式失败（可能没有权限）", Anchor);
+            }
         }
 
         private void EnsureAutostart()
@@ -647,11 +948,94 @@ namespace ClipPeek
                 Capture(_icon.Bounds, Path.Combine(directory, "icon.png"));
                 _icon.Hide();
 
+                RenderIntroFrames(directory);
+
+                // 换图标对话框的截图（顺便验证它能正常渲染）
+                string samplePath = Path.Combine(directory, "sample-photo.png");
+                using (Bitmap sample = SampleImage())
+                {
+                    sample.Save(samplePath, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                using (IconCropForm crop = new IconCropForm(samplePath, _directory))
+                {
+                    crop.Show();
+                    Pump(500);
+                    Program.Trace("preview crop dialog visible=" + crop.Visible + " bounds=" + crop.Bounds);
+                    try
+                    {
+                        using (Bitmap shot = new Bitmap(crop.Width, crop.Height))
+                        {
+                            crop.DrawToBitmap(shot, new Rectangle(0, 0, crop.Width, crop.Height));
+                            shot.Save(Path.Combine(directory, "crop-dialog.png"),
+                                System.Drawing.Imaging.ImageFormat.Png);
+                        }
+                    }
+                    catch (Exception shotError)
+                    {
+                        Log.Error("CaptureCropDialog", shotError);
+                    }
+                    crop.Hide();
+                }
+
                 Program.Trace("preview done");
             }
             catch (Exception ex)
             {
                 Log.Error("Preview", ex);
+            }
+        }
+
+        /// <summary>把开场动画的关键帧离线渲染成 PNG（不依赖屏幕是否亮着）。</summary>
+        private void RenderIntroFrames(string directory)
+        {
+            try
+            {
+                int box = Ui.Px(48);
+                int canvas = box * 3;
+                int radius = Ui.Px(24);
+
+                Bitmap icon = Theme.BuildBitmap(box, false);
+                IntroAnimation animation = new IntroAnimation(icon, box, canvas, Ui.Scale, new Random(7));
+
+                int[] frames = new int[]
+                {
+                    (int)(animation.TotalMs * 0.12),
+                    (int)(animation.TotalMs * 0.30),
+                    (int)(animation.TotalMs * 0.50),
+                    (int)(animation.TotalMs * 0.72),
+                    animation.SettleMs + 40
+                };
+
+                for (int i = 0; i < frames.Length; i++)
+                {
+                    using (Bitmap frame = new Bitmap(canvas, canvas))
+                    {
+                        using (Graphics g = Graphics.FromImage(frame))
+                        {
+                            // 预览图给一块深色底，真实运行时这里是你的桌面（窗口是透明的）
+                            using (LinearGradientBrush backdrop = new LinearGradientBrush(
+                                new Rectangle(0, 0, canvas, canvas),
+                                Color.FromArgb(255, 26, 30, 38),
+                                Color.FromArgb(255, 44, 52, 66),
+                                35f))
+                            {
+                                g.FillRectangle(backdrop, 0, 0, canvas, canvas);
+                            }
+
+                            animation.Draw(g, frames[i]);
+                        }
+
+                        frame.Save(Path.Combine(directory, "intro-" + (i + 1) + ".png"),
+                            System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                }
+
+                icon.Dispose();
+                Program.Trace("preview intro frames done");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("RenderIntroFrames", ex);
             }
         }
 
@@ -751,11 +1135,50 @@ namespace ClipPeek
                 ClipboardWatcher.TryGetText(out roundTrip);
                 check("clipboard.restore", wrote && roundTrip == "restore-check");
 
+                // 文件回填：放回真正的文件剪贴板，而不是一串路径文本
+                string dropFile = Path.Combine(_directory, "selftest-file.txt");
+                File.WriteAllText(dropFile, "clipboard file test");
+                int existingCount;
+                int totalCount;
+                bool filesOk = ClipboardWatcher.SetFiles(new string[] { dropFile }, out existingCount, out totalCount);
+                bool listed = Clipboard.ContainsFileDropList();
+                string firstListed = listed && Clipboard.GetFileDropList().Count > 0
+                    ? Clipboard.GetFileDropList()[0]
+                    : null;
+                check("clipboard.files", filesOk && existingCount == 1 && listed
+                    && string.Equals(firstListed, dropFile, StringComparison.OrdinalIgnoreCase));
+
+                // 同时带上一份路径文本，记事本这类只认文本的地方也能粘
+                string fileText;
+                ClipboardWatcher.TryGetText(out fileText);
+                check("clipboard.filesText",
+                    !string.IsNullOrEmpty(fileText)
+                    && fileText.IndexOf("selftest-file.txt", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                int goneExisting;
+                int goneTotal;
+                bool goneOk = ClipboardWatcher.SetFiles(
+                    new string[] { Path.Combine(_directory, "not-here.zzz") }, out goneExisting, out goneTotal);
+                check("clipboard.filesGone", !goneOk && goneExisting == 0 && goneTotal == 1);
+                try { File.Delete(dropFile); } catch { }
+
                 ClipItem imageItem = new ClipItem();
                 imageItem.Kind = ClipKind.Image;
                 imageItem.ImgW = 800;
                 imageItem.ImgH = 600;
                 check("image.notRestorable", !imageItem.CanRestore);
+
+                // 自定义图标的裁剪渲染
+                using (Bitmap sample = SampleImage())
+                {
+                    using (Bitmap rendered = IconImage.RenderIcon(sample, Ui.Px(96), 1.6f, new PointF(0.4f, 0.6f), Ui.Px(24)))
+                    {
+                        check("icon.customRender", rendered.Width == Ui.Px(96) && rendered.Height == Ui.Px(96));
+                    }
+                }
+                check("icon.extensionCheck",
+                    IconImage.LooksLikeImage("a.png") && IconImage.LooksLikeImage("b.JPG")
+                    && !IconImage.LooksLikeImage("c.exe") && !IconImage.LooksLikeImage("d.txt"));
 
                 output.AppendLine("SKIP sensitive-flag (需真实密码管理器触发)");
                 output.AppendLine("SKIP hotkey (需真实按键)");

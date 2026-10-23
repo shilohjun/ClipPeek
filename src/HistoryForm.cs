@@ -9,6 +9,7 @@ namespace ClipPeek
     {
         internal event EventHandler<ClipItem> ItemActivated;
         internal event EventHandler HistoryChanged;
+        internal event EventHandler<string> ImageDropped;
 
         private readonly HistoryStore _store;
         private readonly ListBox _list;
@@ -85,6 +86,37 @@ namespace ClipPeek
 
             Controls.Add(_list);
             Controls.Add(_empty);
+
+            AllowDrop = true;
+            DragEnter += OnDragEnter;
+            DragDrop += OnDragDrop;
+        }
+
+        private void OnDragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = GetDroppedImage(e) == null ? DragDropEffects.None : DragDropEffects.Copy;
+        }
+
+        private void OnDragDrop(object sender, DragEventArgs e)
+        {
+            string file = GetDroppedImage(e);
+            if (file == null) return;
+            if (ImageDropped != null) ImageDropped(this, file);
+        }
+
+        private static string GetDroppedImage(DragEventArgs e)
+        {
+            try
+            {
+                if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return null;
+                string[] files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files == null || files.Length == 0) return null;
+                return IconImage.LooksLikeImage(files[0]) ? files[0] : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -142,9 +174,29 @@ namespace ClipPeek
         {
             _list.BeginUpdate();
             _list.Items.Clear();
-            foreach (ClipItem item in _store.Items) _list.Items.Add(item);
+            foreach (ClipItem item in _store.Items)
+            {
+                if (item.Kind == ClipKind.Files) item.FilesMissing = FilesGone(item);
+                _list.Items.Add(item);
+            }
             _list.EndUpdate();
             _hover = -1;
+        }
+
+        private static bool FilesGone(ClipItem item)
+        {
+            if (item.Files == null || item.Files.Length == 0) return true;
+            foreach (string path in item.Files)
+            {
+                try
+                {
+                    if (System.IO.File.Exists(path) || System.IO.Directory.Exists(path)) return false;
+                }
+                catch
+                {
+                }
+            }
+            return true;
         }
 
         private void ComputeButtonRects()
@@ -358,6 +410,14 @@ namespace ClipPeek
                 TextRenderer.DrawText(
                     e.Graphics, "不可回填", _fontMeta,
                     new Rectangle(e.Bounds.Right - Ui.Px(76), pill.Top, Ui.Px(64), Ui.Px(18)),
+                    Theme.TextSub,
+                    TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            }
+            else if (item.Kind == ClipKind.Files && item.FilesMissing)
+            {
+                TextRenderer.DrawText(
+                    e.Graphics, "文件已不在", _fontMeta,
+                    new Rectangle(e.Bounds.Right - Ui.Px(88), pill.Top, Ui.Px(76), Ui.Px(18)),
                     Theme.TextSub,
                     TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
             }

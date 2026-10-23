@@ -11,10 +11,10 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-brightgreen">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.1.0-brightgreen">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6">
-  <img alt="Size" src="https://img.shields.io/badge/exe-57%20KB-success">
+  <img alt="Size" src="https://img.shields.io/badge/exe-76%20KB-success">
   <a href="https://github.com/shilohjun/ClipPeek/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/shilohjun/ClipPeek/total"></a>
 </p>
 
@@ -46,6 +46,8 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 | | |
 |---|---|
 | ✅ **Copy confirmation bubble** | Type + size + up to two preview lines; fades after 2.5 s, pauses on hover, click to open history |
+| ✅ **Launch animation** | 144 eight-pixel blocks converge into the icon on startup, with a **fully transparent background** (no card — it floats straight over your desktop). Can be turned off, replayed, and never blocks clicks |
+| ✅ **Custom icon** | Pick an image via right-click → "change icon…", or just drop one onto the floating icon → pan/zoom to crop → the icon, tray icon and launch animation all switch to yours |
 | ✅ **Image thumbnails** | Screenshots and images get a thumbnail with dimensions and size |
 | ✅ **Draggable floating icon** | Put it anywhere, position is remembered; click to open, right-click for menu, 4 px threshold separates drag from click |
 | ✅ **History panel** | Last 200 entries with type badge, time and first line; click to restore, `Del` to delete, `Esc` to close |
@@ -67,6 +69,10 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 | Image bubble | Floating icon |
 |---|---|
 | ![Image bubble](screenshots/bubble-image.png) | ![Floating icon](screenshots/icon.png) |
+
+| Launch animation (blocks assembling) | Cropping a custom icon |
+|---|---|
+| ![Launch animation](screenshots/intro.png) | ![Crop dialog](screenshots/icon-crop.png) |
 
 ---
 
@@ -101,10 +107,12 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | Copy anything | Icon flashes green + bubble appears (type / size / preview / thumbnail) |
 | **Click** the floating icon | Open / close the history panel |
 | **Drag** the floating icon | Move it anywhere; position is remembered across restarts |
-| **Right-click** the floating icon | History / pause / autostart / hide / reset position / open data folder / clear history / quit |
+| **Drag an image onto the icon**, or right-click → **"change icon…"** | Opens a crop dialog: drag to pan, scroll to zoom; the floating icon, tray icon and launch animation all switch to it |
+| **Right-click** the floating icon | History / pause / autostart / hide / reset position / open data folder / change icon / adjust icon crop / reset icon / play animation on startup / replay animation / create Start menu shortcut / clear history / quit |
 | Click the tray icon | Same as clicking the floating icon (fallback) |
 | Double-click the tray icon | Bring back a hidden floating icon |
 | `Ctrl+Alt+V` | Global hotkey for the history panel |
+| `Ctrl+Alt+C` | Start ClipPeek **when it is not running** (create the Start menu shortcut once from the menu first) |
 
 **Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it.
 
@@ -115,7 +123,8 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | File | Location | Contents |
 |---|---|---|
 | `history.json` | Installed: `%APPDATA%\ClipPeek\`<br>Portable: next to the exe | Last 200 entries |
-| `settings.json` | Same | Icon position, pause state, autostart flag |
+| `settings.json` | Same | Icon position, pause state, autostart flag, animation toggle |
+| `custom-icon.png` | Same | Your custom icon (cropped to 256×256) |
 | `clip-peek.log` | Same | Written **only on errors**; normally does not exist |
 
 **Fully local**: no network requests, no accounts, no telemetry. Everything stays on your disk.
@@ -133,6 +142,8 @@ To remove everything: quit the app, delete the data folder, delete the install f
 ## Trade-offs
 
 - **Images cannot be restored**: history only keeps "1920×1080" plus a size, so clicking it says the image itself was not saved. In exchange, screenshots never silently pile up on disk.
+- **Files are restored for real**: clicking a file entry puts the **actual files** back on the clipboard (plus a path-text fallback), so Explorer can paste them. If those files have been moved or deleted, it falls back to copying the paths, says so in the bubble, and the panel marks the entry "files gone".
+- **Custom icons only affect the app**: the floating icon, tray icon and launch animation change; Start menu / desktop shortcut icons do not (that would require patching the exe resources).
 - **Duplicate content is merged**: copying the same text twice updates the existing entry instead of filling the list with repeats.
 - **No search box**: under 200 entries, scrolling and type badges are enough; a search box would steal keyboard focus and fight the "click outside to close" behaviour.
 - **Comments are in Chinese**: the source keeps Chinese comments, which is why this English README exists.
@@ -141,8 +152,23 @@ To remove everything: quit the app, delete the data folder, delete the install f
 
 ## FAQ
 
+**Press Ctrl+C while ClipPeek is not running — nothing happens. Why?**
+Watching the clipboard requires a live process; there is no way around it. Two ways to keep it around:
+
+1. **Start with Windows (on by default)** — the `ClipPeek.lnk` in your Startup folder launches it at login.
+2. **Start it manually** — right-click the icon → "create Start menu shortcut (Ctrl+Alt+C)". After that, pressing `Ctrl+Alt+C` launches it even when it is not running (Windows shortcut launch key). You can also pin `ClipPeek.exe` to the taskbar.
+
+**How do I change the icon, and how do I undo it?**
+Either right-click the icon → "change icon…" and pick a file, or drag a PNG / JPG / ICO straight onto the floating icon (or the history panel). A crop dialog opens; drag to pan, scroll to zoom, confirm. The floating icon, tray icon and launch-animation blocks all switch. Right-click → "reset icon" restores the default and deletes `custom-icon.png`.
+
+**The launch animation is gone / I want to see it again.**
+"Play animation on startup" toggles it; "replay animation" shows it again immediately. It never takes focus or blocks clicks, and pressing the panel hotkey skips it.
+
 **The icon disappeared.**
 Double-click the tray icon (or right-click the tray → "show floating icon"). It hides on purpose during fullscreen games, video and presentations, and returns within a second.
+
+**I restored a file entry and only a path got pasted. Why?**
+Not anymore: file entries now put the **actual files** back on the clipboard (`CF_HDROP`, with a path-text fallback), so pasting into Explorer yields files. Only when those files have been moved or deleted does it copy paths instead — the bubble tells you "the files are gone, only paths were copied".
 
 **A copy did not produce a bubble.**
 Three possibilities: the text exceeded 200,000 characters (history only), the content carried a password manager's "do not record" flag (not recorded at all), or "pause monitoring" is checked in the tray menu.

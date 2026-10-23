@@ -1,4 +1,6 @@
 using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 
 namespace ClipPeek
@@ -40,6 +42,45 @@ namespace ClipPeek
 
         [DllImport("user32.dll")]
         internal static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT placement);
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        internal static extern int ReleaseDC(IntPtr hWnd, IntPtr hDc);
+
+        [DllImport("gdi32.dll")]
+        internal static extern IntPtr CreateCompatibleDC(IntPtr hDc);
+
+        [DllImport("gdi32.dll")]
+        internal static extern IntPtr SelectObject(IntPtr hDc, IntPtr hObject);
+
+        [DllImport("gdi32.dll")]
+        internal static extern bool DeleteDC(IntPtr hDc);
+
+        [DllImport("gdi32.dll")]
+        internal static extern bool DeleteObject(IntPtr hObject);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern bool UpdateLayeredWindow(
+            IntPtr hWnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
+            IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SIZE
+        {
+            public int CX;
+            public int CY;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        internal struct BLENDFUNCTION
+        {
+            public byte BlendOp;
+            public byte BlendFlags;
+            public byte SourceConstantAlpha;
+            public byte AlphaFormat;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         internal struct POINT
@@ -87,6 +128,11 @@ namespace ClipPeek
         internal const uint MOD_NOREPEAT = 0x4000;
         internal const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
 
+        internal static int LastWin32Error()
+        {
+            return Marshal.GetLastWin32Error();
+        }
+
         internal static void MakeToolWindow(IntPtr handle)
         {
             int ex = GetWindowLong(handle, GWL_EXSTYLE);
@@ -97,6 +143,134 @@ namespace ClipPeek
         {
             int ex = GetWindowLong(handle, GWL_EXSTYLE);
             SetWindowLong(handle, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+        }
+
+        internal const int WS_EX_LAYERED = 0x00080000;
+        internal const int WS_EX_TRANSPARENT = 0x00000020;
+
+        /// <summary>分层 + 鼠标穿透：动画窗口既按像素透明，又永远不挡点击。</summary>
+        internal static void MakeLayeredClickThrough(IntPtr handle)
+        {
+            int ex = GetWindowLong(handle, GWL_EXSTYLE);
+            SetWindowLong(handle, GWL_EXSTYLE,
+                ex | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct BITMAPINFOHEADER
+        {
+            public int biSize;
+            public int biWidth;
+            public int biHeight;
+            public short biPlanes;
+            public short biBitCount;
+            public int biCompression;
+            public int biSizeImage;
+            public int biXPelsPerMeter;
+            public int biYPelsPerMeter;
+            public int biClrUsed;
+            public int biClrImportant;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct BITMAPINFO
+        {
+            public BITMAPINFOHEADER bmiHeader;
+            public int bmiColors;
+        }
+
+        [DllImport("gdi32.dll", SetLastError = true)]
+        internal static extern IntPtr CreateDIBSection(
+            IntPtr hdc, ref BITMAPINFO pbmi, uint usage, out IntPtr bits, IntPtr hSection, uint offset);
+
+        [DllImport("kernel32.dll", EntryPoint = "RtlMoveMemory")]
+        internal static extern void CopyMemory(IntPtr destination, IntPtr source, int length);
+
+        /// <summary>
+        /// 用 UpdateLayeredWindow 推一帧 32 位预乘 ARGB 位图。
+        /// 必须自己建 DIB 段并拷贝像素——GetHbitmap 返回的是 DDB，ULW 只认 DIB 段。
+        /// </summary>
+        internal static bool SetLayeredBitmap(IntPtr handle, Bitmap bitmap, Point location)
+        {
+            IntPtr screenDc = GetDC(IntPtr.Zero);
+            IntPtr memoryDc = CreateCompatibleDC(screenDc);
+            IntPtr dib = IntPtr.Zero;
+            IntPtr oldBitmap = IntPtr.Zero;
+
+            try
+            {
+                BITMAPINFO info = new BITMAPINFO();
+                info.bmiHeader.biSize = Marshal.SizeOf(typeof(BITMAPINFOHEADER));
+                info.bmiHeader.biWidth = bitmap.Width;
+                info.bmiHeader.biHeight = bitmap.Height; // 自下而上
+                info.bmiHeader.biPlanes = 1;
+                info.bmiHeader.biBitCount = 32;
+                info.bmiHeader.biCompression = 0;
+
+                IntPtr bits;
+                dib = CreateDIBSection(memoryDc, ref info, 0, out bits, IntPtr.Zero, 0);
+                if (dib == IntPtr.Zero || bits == IntPtr.Zero) return false;
+
+                BitmapData data = bitmap.LockBits(
+                    new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                    ImageLockMode.ReadOnly,
+                    PixelFormat.Format32bppPArgb);
+                try
+                {
+                    int rowBytes = bitmap.Width * 4;
+                    for (int y = 0; y < bitmap.Height; y++)
+                    {
+                        // DIB 是自下而上，源位图是自上而下
+                        long destinationOffset = (long)(bitmap.Height - 1 - y) * rowBytes;
+                        long sourceOffset = (long)y * data.Stride;
+                        CopyMemory(
+                            new IntPtr(bits.ToInt64() + destinationOffset),
+                            new IntPtr(data.Scan0.ToInt64() + sourceOffset),
+                            rowBytes);
+                    }
+                    TraceFirstPixel("dib", Marshal.ReadInt32(bits));
+                }
+                finally
+                {
+                    bitmap.UnlockBits(data);
+                }
+
+                oldBitmap = SelectObject(memoryDc, dib);
+
+                POINT destination = new POINT();
+                destination.X = location.X;
+                destination.Y = location.Y;
+
+                POINT source = new POINT();
+                SIZE size = new SIZE();
+                size.CX = bitmap.Width;
+                size.CY = bitmap.Height;
+
+                BLENDFUNCTION blend = new BLENDFUNCTION();
+                blend.BlendOp = 0;
+                blend.BlendFlags = 0;
+                blend.SourceConstantAlpha = 255;
+                blend.AlphaFormat = 1; // AC_SRC_ALPHA
+
+                return UpdateLayeredWindow(handle, screenDc, ref destination, ref size,
+                    memoryDc, ref source, 0, ref blend, 2);
+            }
+            finally
+            {
+                if (oldBitmap != IntPtr.Zero) SelectObject(memoryDc, oldBitmap);
+                if (dib != IntPtr.Zero) DeleteObject(dib);
+                DeleteDC(memoryDc);
+                ReleaseDC(IntPtr.Zero, screenDc);
+            }
+        }
+
+        private static bool _probed;
+
+        internal static void TraceFirstPixel(string where, int pixel)
+        {
+            if (_probed) return;
+            _probed = true;
+            Program.Trace("pixel probe " + where + " = 0x" + pixel.ToString("X8"));
         }
 
         internal static bool ForegroundCoversScreen()

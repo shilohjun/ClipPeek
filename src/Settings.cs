@@ -17,6 +17,7 @@ namespace ClipPeek
         internal bool AutoStart = true;
         internal bool Hidden;
         internal bool Paused;
+        internal bool PlayIntro = true;
 
         internal string Path_
         {
@@ -46,6 +47,7 @@ namespace ClipPeek
                 AutoStart = Bool(map, "autoStart", true);
                 Hidden = Bool(map, "hidden", false);
                 Paused = Bool(map, "paused", false);
+                PlayIntro = Bool(map, "playIntro", true);
             }
             catch (Exception ex)
             {
@@ -64,6 +66,7 @@ namespace ClipPeek
                 map["autoStart"] = AutoStart;
                 map["hidden"] = Hidden;
                 map["paused"] = Paused;
+                map["playIntro"] = PlayIntro;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }

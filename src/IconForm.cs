@@ -9,6 +9,7 @@ namespace ClipPeek
         internal event EventHandler Clicked;
         internal event EventHandler DragFinished;
         internal event EventHandler Pressed;
+        internal event EventHandler<string> ImageDropped;
 
         internal ContextMenuStrip IconMenu;
 
@@ -51,6 +52,37 @@ namespace ClipPeek
             _anim = new Timer();
             _anim.Interval = 30;
             _anim.Tick += OnAnimTick;
+
+            AllowDrop = true;
+            DragEnter += OnDragEnter;
+            DragDrop += OnDragDrop;
+        }
+
+        private void OnDragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = GetDroppedImage(e) == null ? DragDropEffects.None : DragDropEffects.Copy;
+        }
+
+        private void OnDragDrop(object sender, DragEventArgs e)
+        {
+            string file = GetDroppedImage(e);
+            if (file == null) return;
+            if (ImageDropped != null) ImageDropped(this, file);
+        }
+
+        private static string GetDroppedImage(DragEventArgs e)
+        {
+            try
+            {
+                if (e.Data == null || !e.Data.GetDataPresent(DataFormats.FileDrop)) return null;
+                string[] files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files == null || files.Length == 0) return null;
+                return IconImage.LooksLikeImage(files[0]) ? files[0] : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e)

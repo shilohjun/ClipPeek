@@ -97,8 +97,13 @@ namespace ClipPeek
             }
         }
 
+        /// <summary>用户自定义图标（256×256 方图）；为 null 时用内置绘制。</summary>
+        internal static Bitmap CustomIcon;
+
         internal static Bitmap BuildBitmap(int size, bool flash)
         {
+            if (CustomIcon != null) return BuildCustomBitmap(size, flash);
+
             Bitmap bmp = new Bitmap(size, size);
             using (Graphics g = Graphics.FromImage(bmp))
             {
@@ -152,6 +157,38 @@ namespace ClipPeek
                 }
             }
             return bmp;
+        }
+
+        private static Bitmap BuildCustomBitmap(int size, bool flash)
+        {
+            int radius = Math.Max(8, (int)(size * 0.30f));
+            Bitmap bmp = IconImage.RenderIcon(CustomIcon, size, 1f, new PointF(0.5f, 0.5f), radius);
+
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle outer = new Rectangle(0, 0, size - 1, size - 1);
+                using (GraphicsPath path = Round(outer, radius))
+                {
+                    Color border = flash
+                        ? Flash
+                        : (Dark ? Color.FromArgb(255, 68, 78, 94) : Color.FromArgb(255, 203, 210, 222));
+                    float width = flash ? Math.Max(2.0f, size / 16.0f) : Math.Max(1.0f, size / 48.0f);
+                    using (Pen pen = new Pen(border, width)) g.DrawPath(pen, path);
+                }
+            }
+
+            return bmp;
+        }
+
+        internal static void SetCustomIcon(Bitmap icon)
+        {
+            if (CustomIcon != null)
+            {
+                CustomIcon.Dispose();
+                CustomIcon = null;
+            }
+            CustomIcon = icon;
         }
 
         internal static Icon MakeIcon(int size)

@@ -133,6 +133,65 @@ namespace ClipPeek
             return false;
         }
 
+        /// <summary>
+        /// 把文件放回剪贴板（CF_HDROP），这样在资源管理器里能直接粘贴文件。
+        /// 只放仍然存在的路径；返回 false 表示一个都不在了，调用方该退回复制路径。
+        /// </summary>
+        internal static bool SetFiles(string[] paths, out int existing, out int total)
+        {
+            existing = 0;
+            total = paths == null ? 0 : paths.Length;
+            if (total == 0) return false;
+
+            StringCollection list = new StringCollection();
+            foreach (string path in paths)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(path)) continue;
+                    if (File.Exists(path) || Directory.Exists(path))
+                    {
+                        list.Add(path);
+                        existing++;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            if (list.Count == 0) return false;
+
+            string[] selected = new string[list.Count];
+            list.CopyTo(selected, 0);
+
+            // 同时给文件（CF_HDROP）和文本两种格式：
+            // 资源管理器里粘贴得到文件，记事本这类只认文本的地方粘贴得到路径。
+            DataObject data = new DataObject();
+            data.SetData(DataFormats.FileDrop, selected);
+            data.SetData(DataFormats.UnicodeText, string.Join("\r\n", selected));
+
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                try
+                {
+                    Clipboard.SetDataObject(data, true);
+                    return true;
+                }
+                catch (ExternalException)
+                {
+                    Thread.Sleep(40);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("ClipboardWatcher.SetFiles", ex);
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
         internal static bool TryGetText(out string text)
         {
             text = null;

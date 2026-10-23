@@ -24,6 +24,9 @@ namespace ClipPeek
         internal DateTime Time;
         internal bool Truncated;
 
+        /// <summary>文件类记录：当初的文件是否已经全部不在了（面板上标出来）。</summary>
+        internal bool FilesMissing;
+
         // 仅用于当场弹出的气泡，不落盘
         internal Bitmap Preview;
 

@@ -80,9 +80,11 @@ namespace ClipPeek
                 Dictionary<string, object> root = new Dictionary<string, object>();
                 root["items"] = rows;
                 File.WriteAllText(_path, Serializer.Serialize(root));
+                Program.Trace("history saved: " + _path + " items=" + Items.Count);
             }
             catch (Exception ex)
             {
+                Program.Trace("history save FAILED: " + _path + " " + ex.GetType().Name + ": " + ex.Message);
                 Log.Error("HistoryStore.Save", ex);
             }
         }

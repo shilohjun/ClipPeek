@@ -53,7 +53,7 @@ zh.LaunchApp=立即运行 ClipPeek
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:TaskGroup}"; Flags: unchecked
-Name: "autostart"; Description: "{cm:TaskAutostart}"; GroupDescription: "{cm:TaskGroup}"
+Name: "autostart"; Description: "{cm:TaskAutostart}"; GroupDescription: "{cm:TaskGroup}"; Flags: checkedonce
 
 [Files]
 Source: "..\dist\ClipPeek.exe"; DestDir: "{app}"; Flags: ignoreversion
