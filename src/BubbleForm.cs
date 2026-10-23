@@ -83,7 +83,7 @@ namespace ClipPeek
         internal void ShowItem(ClipItem item, Rectangle iconBounds)
         {
             _item = item;
-            _lines = item == null ? new string[0] : item.ContentLines;
+            _lines = item == null ? new string[0] : item.BubbleLines;
 
             if (item != null && item.Preview != null)
             {
@@ -252,7 +252,6 @@ namespace ClipPeek
             int textRight = Width - _pad - (_thumbWidth > 0 ? _thumbWidth + _pad : 0);
 
             string title = _item == null ? "提示" : "已复制 · " + _item.TitleText;
-            if (_item != null && _item.Truncated) title = title + "（已截断）";
 
             TextRenderer.DrawText(
                 g, title, _fontTitle,

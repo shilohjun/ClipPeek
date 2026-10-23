@@ -376,14 +376,24 @@ namespace ClipPeek
         {
             base.OnMouseDown(e);
             if (e.Button != MouseButtons.Left) return;
-            if (_closeRect.Contains(e.Location) || _clearRect.Contains(e.Location)) return;
-            if (IconHidden && FooterRect.Contains(e.Location)) return;
 
-            // 面板空白处（表头 / 页脚 / 列表外的边距）按住就能拖
+            // 图标还在的时候面板跟着图标走，不允许拖；只有图标隐藏了，面板才需要自己挪
+            if (!IconHidden) return;
+
+            if (_closeRect.Contains(e.Location) || _clearRect.Contains(e.Location)) return;
+            if (FooterRect.Contains(e.Location)) return;
+
             _dragging = true;
             _dragMoved = false;
             _dragFrom = Cursor.Position;
             _windowFrom = Location;
+        }
+
+        /// <summary>图标拖动后，让面板跟着走（图标显示时的默认行为）。</summary>
+        internal void FollowIcon(Rectangle iconBounds)
+        {
+            if (IconHidden) return;
+            Place(iconBounds);
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -578,7 +588,7 @@ namespace ClipPeek
             else
             {
                 TextRenderer.DrawText(
-                    g, "↑↓ 选择 · Enter 复制 · Del 删除 · Esc 关闭 · 可拖动", _fontMeta,
+                    g, "↑↓ 选择 · Enter 复制 · Del 删除 · Esc 关闭", _fontMeta,
                     new Rectangle(Ui.Px(14), Height - _footerH + Ui.Px(4), Width - Ui.Px(28), Ui.Px(18)),
                     Theme.TextSub,
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);

@@ -114,7 +114,7 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | `Ctrl+Alt+V` | Global hotkey for the history panel |
 | `Ctrl+Alt+C` | Start ClipPeek **when it is not running** (create the Start menu shortcut once from the menu first) |
 
-**Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it. **Drag any empty part of the panel (header or footer) to move it**; the position is remembered, and "reset position" clears it.
+**Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it. The panel **follows the floating icon** by default (move the icon and the panel opens there next time); it can only be dragged while the icon is hidden, and then its own position is remembered.
 
 **I hid the floating icon — how do I get it back?** Any of these:
 
@@ -141,7 +141,7 @@ What gets skipped:
 
 - Content flagged with "Clipboard Viewer Ignore" (1Password, Bitwarden and friends) → not recorded, no bubble
 - Images are stored as dimensions only — **the image itself is never written to disk**
-- Text longer than 200,000 characters → still recorded, but no bubble (to avoid freezing the UI)
+- A single text entry is capped at **50,000 characters**: the rest is dropped and the entry is marked "truncated". The bubble still appears — its second line says "truncated · only the first 50,000 characters were saved" — which keeps `history.json` from being blown up by a few huge copies
 
 To remove everything: quit the app, delete the data folder, delete the install folder. The uninstaller deliberately keeps the data folder.
 
@@ -179,7 +179,7 @@ Double-click the tray icon (or right-click the tray → "show floating icon"). I
 Not anymore: file entries now put the **actual files** back on the clipboard (`CF_HDROP`, with a path-text fallback), so pasting into Explorer yields files. Only when those files have been moved or deleted does it copy paths instead — the bubble tells you "the files are gone, only paths were copied".
 
 **A copy did not produce a bubble.**
-Three possibilities: the text exceeded 200,000 characters (history only), the content carried a password manager's "do not record" flag (not recorded at all), or "pause monitoring" is checked in the tray menu.
+Three possibilities: the content carried a password manager's "do not record" flag (not recorded at all), "pause monitoring" is checked in the tray menu, or another program was holding the clipboard at that moment. Long text no longer suppresses the bubble — it is truncated and marked instead.
 
 **After changing resolution or display scaling the icon ended up somewhere odd.**
 Right-click the icon → "reset position".

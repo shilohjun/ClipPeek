@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-23
+
+### Changed
+
+- The history panel follows the floating icon by default again: move the icon and the panel opens next to it (an already open panel follows too). It can only be dragged while the floating icon is hidden, because that is the only situation where it needs its own position; the dragged position is remembered for those cases.
+- Over-long text no longer suppresses the confirmation bubble. Every copy gives feedback now: the bubble's second line says "truncated · only the first 50,000 characters were saved" when the text was cut, and the history row is marked "truncated".
+- Storage for a single text entry is capped at 50,000 characters (was 200,000), so a few huge copies can no longer bloat `history.json`.
+
 ## [1.1.0] - 2026-10-23
 
 ### Added

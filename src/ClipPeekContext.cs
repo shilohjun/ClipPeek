@@ -40,7 +40,6 @@ namespace ClipPeek
         }
 
         private const int HotKeyId = 0xB001;
-        private const int MaxBubbleChars = 200000;
 
         private readonly string _directory;
 
@@ -360,13 +359,9 @@ namespace ClipPeek
 
             _history.Add(item);
             _icon.Flash();
-            Program.Trace("clip captured: kind=" + item.Kind + " chars=" + item.Chars + " len=" + item.Text);
+            Program.Trace("clip captured: kind=" + item.Kind + " chars=" + item.Chars + " truncated=" + item.Truncated);
 
-            if (item.Kind == ClipKind.Text && item.Chars > MaxBubbleChars)
-            {
-                Log.Info("skip bubble, text too long: " + item.Chars);
-                return true;
-            }
+            // 超长文本也弹气泡——没反馈会被当成「没复制上」；截断情况由气泡第二行说明
 
             _bubble.ShowItem(item, Anchor);
             return true;
@@ -437,6 +432,9 @@ namespace ClipPeek
             _settings.IconX = _icon.Left;
             _settings.IconY = _icon.Top;
             _settings.Save();
+
+            // 面板默认跟着图标走：图标拖完，开着的话面板一起挪
+            if (_panel.Visible) _panel.FollowIcon(_icon.Bounds);
         }
 
         private void OnBubbleClicked(object sender, EventArgs e)
@@ -476,12 +474,15 @@ namespace ClipPeek
             }
         }
 
-        /// <summary>统一的「打开历史面板」入口：优先用拖动后记住的位置，没拖过就贴着图标。</summary>
+        /// <summary>
+        /// 统一的「打开历史面板」入口：
+        /// 图标在的时候永远贴着图标；只有图标被隐藏了，才用面板自己记住的位置。
+        /// </summary>
         private void ShowPanelNow()
         {
             _panel.IconHidden = _settings.Hidden;
-            _panel.ShowPanel(Anchor, _settings.HasPanelPosition,
-                new Point(_settings.PanelX, _settings.PanelY));
+            bool useManual = _settings.Hidden && _settings.HasPanelPosition;
+            _panel.ShowPanel(Anchor, useManual, new Point(_settings.PanelX, _settings.PanelY));
         }
 
         private Rectangle CursorAnchor()
@@ -1002,6 +1003,17 @@ namespace ClipPeek
                 _bubble.HideBubble();
                 Pump(200);
 
+                // 超长文本被截断时的气泡（内容 + 截断说明两行）
+                ClipItem truncated = MakeText(new string('x', 120) + " 这是一段被截断的超长文本");
+                truncated.Chars = 312480;
+                truncated.Truncated = true;
+                _bubble.ShowItem(truncated, north);
+                _bubble.Opacity = 1.0;
+                Pump(500);
+                Capture(_bubble.Bounds, Path.Combine(directory, "bubble-truncated.png"));
+                _bubble.HideBubble();
+                Pump(200);
+
                 d.Preview = SampleImage();
                 Rectangle north2 = new Rectangle(
                     Screen.PrimaryScreen.WorkingArea.Right - Ui.Px(460), Ui.Px(235), Ui.Px(48), Ui.Px(48));
@@ -1185,6 +1197,22 @@ namespace ClipPeek
                 _suppressUntil = DateTime.MinValue;
                 bool captured = ProcessClipboard();
                 check("clipboard.capture", captured && _history.Items[0].Text == probe);
+
+                // 超长文本：内容按上限截断，但气泡照样弹，并在第二行说明截断
+                string huge = new string('x', ClipboardWatcher.MaxTextChars + 5000);
+                bool hugeSet = ClipboardWatcher.SetText(huge);
+                _lastSeq = Native.GetClipboardSequenceNumber();
+                _suppressUntil = DateTime.MinValue;
+                bool hugeCaptured = ProcessClipboard();
+                ClipItem hugeItem = _history.Items[0];
+                check("text.truncatedStorage", hugeSet && hugeCaptured && hugeItem.Truncated
+                    && hugeItem.Text.Length == ClipboardWatcher.MaxTextChars
+                    && hugeItem.Chars == huge.Length);
+                check("text.truncatedBubble", _bubble.Visible
+                    && hugeItem.BubbleLines.Length >= 2
+                    && hugeItem.BubbleLines[hugeItem.BubbleLines.Length - 1].IndexOf("已截断") >= 0);
+                check("text.truncatedSubtitle", hugeItem.Subtitle.IndexOf("已截断") >= 0);
+                _bubble.HideBubble();
 
                 _hasAnchorOverride = true;
                 _anchorOverride = new Rectangle(Ui.Px(300), Ui.Px(220), Ui.Px(48), Ui.Px(48));

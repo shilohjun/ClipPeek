@@ -69,7 +69,22 @@ namespace ClipPeek
                 if (Kind == ClipKind.Text) head = Chars + " 字";
                 else if (Kind == ClipKind.Image) head = ImgW + "×" + ImgH;
                 else head = (Files == null ? 0 : Files.Length) + " 个文件";
+                if (Truncated) head = head + " · 已截断";
                 return head + " · " + Time.ToString("HH:mm:ss");
+            }
+        }
+
+        /// <summary>气泡里最多两行：内容预览 + （被截断时）截断说明。</summary>
+        internal string[] BubbleLines
+        {
+            get
+            {
+                string[] content = ContentLines;
+                if (!Truncated) return content;
+
+                string note = "已截断 · 仅保存前 " + (ClipboardWatcher.MaxTextChars / 10000) + " 万字";
+                if (content.Length == 0) return new string[] { note };
+                return new string[] { content[0], note };
             }
         }
 

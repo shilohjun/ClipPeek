@@ -11,7 +11,8 @@ namespace ClipPeek
 {
     internal static class ClipboardWatcher
     {
-        internal const int MaxTextChars = 200000;
+        /// <summary>单条文本最多保存这么多字符，超出部分丢弃并标记「已截断」。</summary>
+        internal const int MaxTextChars = 50000;
 
         private const string IgnoreFormat = "Clipboard Viewer Ignore";
 
