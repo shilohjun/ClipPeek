@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-23
+
+### Added
+
+- **Edge snapping** — drag the floating icon within 24 px of any screen edge and it snaps flush. While snapped only **half of the icon** stays visible, cut along the edge, and it slowly breathes like an LED (opacity oscillates between 42% and 100% over a 4.2 s cycle). Hovering expands it into the full icon; dragging it away or choosing "unsnap" releases it. The snapped edge is persisted.
+- The tray menu gained "unsnap" (enabled only while snapped), and `--preview` now renders the snapping animation key frames.
+
 ## [1.1.1] - 2026-10-23
 
 ### Changed

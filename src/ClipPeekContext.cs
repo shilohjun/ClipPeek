@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -58,6 +59,7 @@ namespace ClipPeek
         private ToolStripMenuItem _adjustIconItem;
         private ToolStripMenuItem _cropIconItem;
         private ToolStripMenuItem _resetIconItem;
+        private ToolStripMenuItem _unsnapItem;
 
         private IntroForm _intro;
 
@@ -259,6 +261,8 @@ namespace ClipPeek
             {
                 _icon.PlaceDefault();
             }
+
+            if (_settings.Snap != SnapEdge.None) _icon.DockTo(_settings.Snap);
         }
 
         private void CreateTray()
@@ -431,10 +435,35 @@ namespace ClipPeek
             _settings.HasPosition = true;
             _settings.IconX = _icon.Left;
             _settings.IconY = _icon.Top;
+
+            SnapEdge edge = FindNearestEdge(_icon.Bounds);
+            if (edge != SnapEdge.None) _icon.DockTo(edge);
+            _settings.Snap = _icon.Edge;
             _settings.Save();
 
             // 面板默认跟着图标走：图标拖完，开着的话面板一起挪
             if (_panel.Visible) _panel.FollowIcon(_icon.Bounds);
+        }
+
+        /// <summary>拖到离屏幕边缘足够近就吸附过去。</summary>
+        private static SnapEdge FindNearestEdge(Rectangle bounds)
+        {
+            int threshold = Ui.Px(24);
+            Screen screen = Screen.FromRectangle(bounds);
+            Rectangle work = screen.WorkingArea;
+
+            int left = bounds.Left - work.Left;
+            int top = bounds.Top - work.Top;
+            int right = work.Right - bounds.Right;
+            int bottom = work.Bottom - bounds.Bottom;
+
+            int best = Math.Min(Math.Min(left, top), Math.Min(right, bottom));
+            if (best > threshold) return SnapEdge.None;
+
+            if (best == left) return SnapEdge.Left;
+            if (best == top) return SnapEdge.Top;
+            if (best == right) return SnapEdge.Right;
+            return SnapEdge.Bottom;
         }
 
         private void OnBubbleClicked(object sender, EventArgs e)
@@ -618,10 +647,24 @@ namespace ClipPeek
                 _settings.Hidden = false;
                 _settings.HasPosition = false;
                 _settings.HasPanelPosition = false;
+                _settings.Snap = SnapEdge.None;
                 _settings.Save();
+                _icon.Undock();
                 ApplyIconVisibility();
                 _icon.PlaceDefault();
                 _icon.ClampToScreen();
+            };
+
+            _unsnapItem = new ToolStripMenuItem("取消吸附");
+            _unsnapItem.Click += delegate
+            {
+                _icon.Undock();
+                _settings.Snap = SnapEdge.None;
+                _settings.HasPosition = true;
+                _settings.IconX = _icon.Left;
+                _settings.IconY = _icon.Top;
+                _settings.Save();
+                _bubble.ShowNote("已取消吸附", Anchor);
             };
 
             _clearItem = new ToolStripMenuItem("清空历史");
@@ -672,6 +715,7 @@ namespace ClipPeek
             _menu.Items.Add(_autoItem);
             _menu.Items.Add(_hideItem);
             _menu.Items.Add(resetItem);
+            _menu.Items.Add(_unsnapItem);
             _menu.Items.Add(openDataItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_adjustIconItem);
@@ -694,6 +738,7 @@ namespace ClipPeek
             _autoItem.Checked = _settings.AutoStart;
             _hideItem.Text = _settings.Hidden ? "显示浮动图标" : "隐藏浮动图标";
             _clearItem.Enabled = _history.Items.Count > 0;
+            _unsnapItem.Enabled = _icon.IsDocked;
             _introItem.Checked = _settings.PlayIntro;
             _resetIconItem.Enabled = Theme.CustomIcon != null;
             _cropIconItem.Enabled = Theme.CustomIcon != null;
@@ -1033,6 +1078,7 @@ namespace ClipPeek
                 _icon.Hide();
 
                 RenderIntroFrames(directory);
+                RenderDockFrames(directory);
 
                 // 换图标对话框的截图（顺便验证它能正常渲染）
                 string samplePath = Path.Combine(directory, "sample-photo.png");
@@ -1066,6 +1112,68 @@ namespace ClipPeek
             catch (Exception ex)
             {
                 Log.Error("Preview", ex);
+            }
+        }
+
+        /// <summary>吸附后的样子：半个图标贴在屏幕边缘，按呼吸灯的不同透明度拼一张图。</summary>
+        private void RenderDockFrames(string directory)
+        {
+            try
+            {
+                int box = Ui.Px(48);
+                int half = box / 2;
+                int gap = Ui.Px(10);
+                double[] phases = new double[] { 0.0, 0.25, 0.5, 0.75 };
+
+                int width = phases.Length * half + (phases.Length + 1) * gap;
+                int height = box + gap * 2;
+
+                using (Bitmap strip = new Bitmap(width, height))
+                {
+                    using (Graphics g = Graphics.FromImage(strip))
+                    {
+                        g.Clear(Color.FromArgb(255, 240, 243, 248));
+                        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                        using (Bitmap icon = Theme.BuildBitmap(box, false))
+                        using (ImageAttributes attributes = new ImageAttributes())
+                        {
+                            for (int i = 0; i < phases.Length; i++)
+                            {
+                                Rectangle cell = new Rectangle(gap + i * (half + gap), gap, half, box);
+                                using (SolidBrush cellBg = new SolidBrush(Color.FromArgb(255, 252, 253, 255)))
+                                {
+                                    g.FillRectangle(cellBg, cell);
+                                }
+
+                                double opacity = DockBreath.OpacityAt(phases[i] * DockBreath.PeriodMs);
+                                ColorMatrix matrix = new ColorMatrix();
+                                matrix.Matrix00 = 1f;
+                                matrix.Matrix11 = 1f;
+                                matrix.Matrix22 = 1f;
+                                matrix.Matrix33 = (float)opacity;
+                                matrix.Matrix44 = 1f;
+                                attributes.SetColorMatrix(matrix);
+
+                                // 每个格子左边缘当作屏幕边缘：只露图标右半边
+                                Region old = g.Clip;
+                                g.SetClip(cell);
+                                g.DrawImage(icon,
+                                    new Rectangle(cell.X - half, cell.Y, box, box),
+                                    0, 0, box, box, GraphicsUnit.Pixel, attributes);
+                                g.Clip = old;
+                            }
+                        }
+                    }
+
+                    strip.Save(Path.Combine(directory, "dock-frames.png"), System.Drawing.Imaging.ImageFormat.Png);
+                }
+
+                Program.Trace("preview dock frames done");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("RenderDockFrames", ex);
             }
         }
 
@@ -1279,6 +1387,15 @@ namespace ClipPeek
                 check("icon.extensionCheck",
                     IconImage.LooksLikeImage("a.png") && IconImage.LooksLikeImage("b.JPG")
                     && !IconImage.LooksLikeImage("c.exe") && !IconImage.LooksLikeImage("d.txt"));
+
+                // 呼吸灯：一轮要够慢，最低/最高透明度在合理区间
+                double breathMin = DockBreath.OpacityAt(0);
+                double breathMax = DockBreath.OpacityAt(DockBreath.PeriodMs / 2);
+                double breathMid = DockBreath.OpacityAt(DockBreath.PeriodMs * 3 / 4);
+                check("dock.breath", DockBreath.PeriodMs >= 4000
+                    && Math.Abs(breathMin - DockBreath.MinOpacity) < 0.01
+                    && Math.Abs(breathMax - DockBreath.MaxOpacity) < 0.01
+                    && breathMid > breathMin && breathMid < breathMax);
 
                 output.AppendLine("SKIP sensitive-flag (需真实密码管理器触发)");
                 output.AppendLine("SKIP hotkey (需真实按键)");

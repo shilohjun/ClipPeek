@@ -47,6 +47,7 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 |---|---|
 | ✅ **Copy confirmation bubble** | Type + size + up to two preview lines; fades after 2.5 s, pauses on hover, click to open history |
 | ✅ **Launch animation** | 144 eight-pixel blocks converge into the icon on startup, with a **fully transparent background** (no card — it floats straight over your desktop). Can be turned off, replayed, and never blocks clicks |
+| ✅ **Edge snapping** | Drag the icon near any screen edge (within 24 px) and it snaps; only **half of the icon** stays visible, cut along the edge, and it slowly **breathes** like an LED (one cycle ≈ 4.2 s). Hover to expand it into the full icon; drag it away or use "unsnap" to release |
 | ✅ **Custom icon** | Pick an image via right-click → "change icon…", or just drop one onto the floating icon → pan/zoom to crop → the icon, tray icon and launch animation all switch to yours |
 | ✅ **Image thumbnails** | Screenshots and images get a thumbnail with dimensions and size |
 | ✅ **Draggable floating icon** | Put it anywhere, position is remembered; click to open, right-click for menu, 4 px threshold separates drag from click |
@@ -73,6 +74,10 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 | Launch animation (blocks assembling) | Cropping a custom icon |
 |---|---|
 | ![Launch animation](screenshots/intro.png) | ![Crop dialog](screenshots/icon-crop.png) |
+
+| Snapped to a screen edge: half an icon breathing like an LED (dim → bright → dim) |
+|---|
+| ![Snap animation frames](screenshots/dock-frames.png) |
 
 ---
 
@@ -115,6 +120,14 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | `Ctrl+Alt+C` | Start ClipPeek **when it is not running** (create the Start menu shortcut once from the menu first) |
 
 **Inside the panel**: `↑` `↓` select · `Enter` copy back · `Del` delete · `Esc` close · click to copy · right-click for menu · clicking outside closes it. The panel **follows the floating icon** by default (move the icon and the panel opens there next time); it can only be dragged while the icon is hidden, and then its own position is remembered.
+
+**The icon snapped to an edge — how do I get it back out?** Three ways:
+
+1. Just **drag it away from the edge** — more than 24 px and it unsnaps
+2. Right-click the icon → "**unsnap**"
+3. Right-click the icon → "reset position" (also resets the panel position)
+
+The snapped state is remembered across restarts.
 
 **I hid the floating icon — how do I get it back?** Any of these:
 

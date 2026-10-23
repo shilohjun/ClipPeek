@@ -23,6 +23,9 @@ namespace ClipPeek
         internal int PanelX = int.MinValue;
         internal int PanelY = int.MinValue;
 
+        /// <summary>吸附在哪条屏幕边缘（None 表示没有吸附）。</summary>
+        internal SnapEdge Snap = SnapEdge.None;
+
         internal string Path_
         {
             get { return _path; }
@@ -55,6 +58,7 @@ namespace ClipPeek
                 HasPanelPosition = Bool(map, "hasPanelPosition", false);
                 PanelX = Int(map, "panelX", int.MinValue);
                 PanelY = Int(map, "panelY", int.MinValue);
+                Snap = (SnapEdge)Int(map, "snap", 0);
             }
             catch (Exception ex)
             {
@@ -77,6 +81,7 @@ namespace ClipPeek
                 map["hasPanelPosition"] = HasPanelPosition;
                 map["panelX"] = PanelX;
                 map["panelY"] = PanelY;
+                map["snap"] = (int)Snap;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }
