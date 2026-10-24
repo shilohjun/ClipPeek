@@ -23,6 +23,9 @@ namespace ClipPeek
         internal int PanelX = int.MinValue;
         internal int PanelY = int.MinValue;
 
+        /// <summary>复制成功时是否弹那个气泡卡片。</summary>
+        internal bool ShowBubble = true;
+
         /// <summary>拖动松开时自动吸附到屏幕边缘。</summary>
         internal bool AutoSnap = true;
 
@@ -67,6 +70,7 @@ namespace ClipPeek
                 Snap = (SnapEdge)Int(map, "snap", 0);
                 CursorGlow = Bool(map, "cursorGlow", true);
                 AutoSnap = Bool(map, "autoSnap", true);
+                ShowBubble = Bool(map, "showBubble", true);
             }
             catch (Exception ex)
             {
@@ -92,6 +96,7 @@ namespace ClipPeek
                 map["snap"] = (int)Snap;
                 map["cursorGlow"] = CursorGlow;
                 map["autoSnap"] = AutoSnap;
+                map["showBubble"] = ShowBubble;
 
                 File.WriteAllText(_path, Serializer.Serialize(map));
             }

@@ -45,10 +45,10 @@ ClipPeek flips it: **copying is the subject, feedback is automatic**. You do not
 
 | | |
 |---|---|
-| ✅ **Copy confirmation bubble** | Type + size + up to two preview lines; fades after 2.5 s, pauses on hover, click to open history |
+| ✅ **Copy confirmation bubble** | Type + size + up to two preview lines; fades after 2.5 s, pauses on hover, click to open history; the menu's "bubble on copy" toggle turns it off entirely (on by default) |
 | ✅ **Cursor glow** | A green ring flashes at the mouse on every successful copy: it follows the cursor, is click-through and hollow in the middle so it never hides text. One 1.4 s "breathe + slight expand"; toggle it from the right-click menu |
 | ✅ **Launch animation** | 144 eight-pixel blocks converge into the icon on startup, with a **fully transparent background** (no card — it floats straight over your desktop). Can be turned off, replayed, and never blocks clicks |
-| ✅ **Edge snapping** | Drag the icon near any screen edge (within 24 px) and it snaps; only **half of the icon** stays visible, cut along the edge, and it slowly **breathes** like an LED (one cycle ≈ 4.2 s). Hover to expand it into the full icon; drag it away or use "unsnap" to release; the menu's "auto-snap to screen edges" toggle turns the whole thing off (on by default) |
+| ✅ **Edge snapping** | Drag the icon near any screen edge (within 24 px) and it snaps; only **half of the icon** stays visible, cut along the edge, and it slowly **breathes** like an LED (one cycle ≈ 4.2 s). Hover to expand it into the full icon; **dragging it more than 24 px away releases it**; the menu's "auto-snap to screen edges" toggle turns the whole thing off (on by default, and turning it off also releases a snapped icon) |
 | ✅ **Custom icon** | Pick an image via right-click → "change icon…", or just drop one onto the floating icon → pan/zoom to crop → the icon, tray icon and launch animation all switch to yours |
 | ✅ **Image thumbnails** | Screenshots and images get a thumbnail with dimensions and size |
 | ✅ **Draggable floating icon** | Put it anywhere, position is remembered; click to open, right-click for menu, 4 px threshold separates drag from click |
@@ -118,7 +118,7 @@ See [Build from source](#build-from-source). All you need is the .NET Framework 
 | **Click** the floating icon | Open / close the history panel |
 | **Drag** the floating icon | Move it anywhere; position is remembered across restarts |
 | **Drag an image onto the icon**, or right-click → **"change icon…"** | Opens a crop dialog: drag to pan, scroll to zoom; the floating icon, tray icon and launch animation all switch to it |
-| **Right-click** the floating icon | History / pause / autostart / hide / reset position / auto-snap / unsnap / change icon / adjust icon crop / reset icon / play animation on startup / replay animation / create Start menu shortcut / clear history / quit |
+| **Right-click** the floating icon | History / pause / autostart / hide / reset position / auto-snap / change icon / adjust icon crop / reset icon / play animation on startup / replay animation / create Start menu shortcut / clear history / quit |
 | Click the tray icon | Same as clicking the floating icon (fallback) |
 | Double-click the tray icon | Bring back a hidden floating icon |
 | `Ctrl+Alt+V` | Global hotkey for the history panel |
@@ -131,8 +131,8 @@ Check for a bubble first — every such action now reports why. The most common 
 **The icon snapped to an edge — how do I get it back out?** Three ways:
 
 1. Just **drag it away from the edge** — more than 24 px and it unsnaps
-2. Right-click the icon → "**unsnap**"
-3. Right-click the icon → "reset position" (also resets the panel position)
+2. Right-click the icon → untick "**auto-snap to screen edges**" (the icon comes back to full size immediately and no longer snaps)
+3. Right-click the icon → "reset position" (also resets the panel position and the snap)
 
 The snapped state is remembered across restarts.
 

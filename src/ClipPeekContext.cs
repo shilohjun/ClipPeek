@@ -60,8 +60,8 @@ namespace ClipPeek
         private ToolStripMenuItem _adjustIconItem;
         private ToolStripMenuItem _cropIconItem;
         private ToolStripMenuItem _resetIconItem;
-        private ToolStripMenuItem _unsnapItem;
         private ToolStripMenuItem _glowItem;
+        private ToolStripMenuItem _bubbleItem;
         private ToolStripMenuItem _autoSnapItem;
 
         private IntroForm _intro;
@@ -379,7 +379,7 @@ namespace ClipPeek
 
             // 超长文本也弹气泡——没反馈会被当成「没复制上」；截断情况由气泡第二行说明
 
-            _bubble.ShowItem(item, Anchor);
+            if (_settings.ShowBubble) _bubble.ShowItem(item, Anchor);
             return true;
         }
 
@@ -433,6 +433,9 @@ namespace ClipPeek
         private void OnIconPressed(object sender, EventArgs e)
         {
             _sawPanelVisible = _panel.Visible;
+
+            // 一按下就把气泡收掉：拖动图标时屏幕上不该还挂着一块东西
+            _bubble.HideBubble();
         }
 
         private void OnIconClicked(object sender, EventArgs e)
@@ -671,18 +674,6 @@ namespace ClipPeek
                 _icon.ClampToScreen();
             };
 
-            _unsnapItem = new ToolStripMenuItem("取消吸附");
-            _unsnapItem.Click += delegate
-            {
-                _icon.Undock();
-                _settings.Snap = SnapEdge.None;
-                _settings.HasPosition = true;
-                _settings.IconX = _icon.Left;
-                _settings.IconY = _icon.Top;
-                _settings.Save();
-                _bubble.ShowNote("已取消吸附", Anchor);
-            };
-
             _autoSnapItem = new ToolStripMenuItem("自动吸附屏幕边缘");
             _autoSnapItem.CheckOnClick = true;
             _autoSnapItem.Click += delegate
@@ -726,6 +717,14 @@ namespace ClipPeek
                 _settings.Save();
             };
 
+            _bubbleItem = new ToolStripMenuItem("复制成功弹窗");
+            _bubbleItem.CheckOnClick = true;
+            _bubbleItem.Click += delegate
+            {
+                _settings.ShowBubble = _bubbleItem.Checked;
+                _settings.Save();
+                if (!_settings.ShowBubble) _bubble.HideBubble();
+            };
             _glowItem = new ToolStripMenuItem("复制时光标光晕");
             _glowItem.CheckOnClick = true;
             _glowItem.Click += delegate
@@ -748,12 +747,12 @@ namespace ClipPeek
             _menu.Items.Add(_hideItem);
             _menu.Items.Add(resetItem);
             _menu.Items.Add(_autoSnapItem);
-            _menu.Items.Add(_unsnapItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_adjustIconItem);
             _menu.Items.Add(_cropIconItem);
             _menu.Items.Add(_resetIconItem);
             _menu.Items.Add(_introItem);
+            _menu.Items.Add(_bubbleItem);
             _menu.Items.Add(_glowItem);
             _menu.Items.Add(replayItem);
             _menu.Items.Add(shortcutItem);
@@ -771,9 +770,9 @@ namespace ClipPeek
             _autoItem.Checked = _settings.AutoStart;
             _hideItem.Text = _settings.Hidden ? "显示浮动图标" : "隐藏浮动图标";
             _clearItem.Enabled = _history.Items.Count > 0;
-            _unsnapItem.Enabled = _icon.IsDocked;
             _introItem.Checked = _settings.PlayIntro;
             _glowItem.Checked = _settings.CursorGlow;
+            _bubbleItem.Checked = _settings.ShowBubble;
             _autoSnapItem.Checked = _settings.AutoSnap;
             _resetIconItem.Enabled = Theme.CustomIcon != null;
             _cropIconItem.Enabled = Theme.CustomIcon != null;

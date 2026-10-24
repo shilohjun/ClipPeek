@@ -24,6 +24,8 @@ portable.txt
 tools/gh/
 tools/ghcfg/
 _probe/
+_desk*.png
+_menu-live.png
 tools/inno/
 
 # 常规

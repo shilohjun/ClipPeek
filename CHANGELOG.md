@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-23
+
+### Added
+
+- **"bubble on copy" toggle** — a checkable menu item ("复制成功弹窗"), on by default, that turns the copy-confirmation card off entirely. It only controls that automatic bubble: the cursor glow, the green icon flash, the history entry and every error/operation message are unaffected, so switching it off never makes a copy look like it did not happen.
+- The bubble is now dismissed the moment the floating icon is pressed, so dragging the icon never leaves a stray card on screen.
+
+### Removed
+
+- The **"unsnap"** menu item. Snapping is now fully controlled by one switch: unticking "auto-snap to screen edges" releases a snapped icon immediately, and dragging it more than 24 px away from the edge still releases it as a gesture.
+
 ## [1.4.0] - 2026-10-23
 
 ### Added
